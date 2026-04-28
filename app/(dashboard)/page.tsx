@@ -241,6 +241,13 @@ export default function NewSalePage() {
                         {inCart.quantity}
                       </Badge>
                     )}
+                    <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
+                      <img
+                        src={product.image_url || '/placeholder.jpg'}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
                     <div className="space-y-1">
                       <p className="font-medium text-foreground line-clamp-1">{product.name}</p>
                       {product.variant && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { Product, Category, ProductRowState } from '@/lib/types'
@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'
-import Image from 'next/image'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -59,6 +58,8 @@ export default function ProductsPage() {
   const [editedProducts, setEditedProducts] = useState<Map<string, ProductRowState>>(new Map())
   const [isNewProductOpen, setIsNewProductOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const rowFileInputs = useRef<Record<string, HTMLInputElement | null>>({})
+  const newProductFileInput = useRef<HTMLInputElement | null>(null)
 
   // New product form state
   const [newProduct, setNewProduct] = useState({
@@ -186,13 +187,15 @@ export default function ProductsPage() {
         stock: parseInt(newProduct.stock),
         category_id: newProduct.category_id || null,
         is_active: newProduct.is_active,
+        image_url: newProduct.image_url || null,
       })
 
       if (error) throw error
 
       toast.success('Producto creado')
       setIsNewProductOpen(false)
-      setNewProduct({ name: '', variant: '', price: '', stock: '', category_id: '', is_active: true })
+      setNewProduct({ name: '', variant: '', price: '', stock: '', category_id: '', is_active: true, image_url: '' })
+      setImagePreview(null)
       mutate('all-products')
       mutate('products')
     } catch (error) {
@@ -259,6 +262,41 @@ export default function ProductsPage() {
                 <DialogDescription>Completa los datos del nuevo producto</DialogDescription>
               </DialogHeader>
               <FieldGroup>
+                <Field>
+                  <FieldLabel>Imagen</FieldLabel>
+                  <button
+                    type="button"
+                    onClick={() => newProductFileInput.current?.click()}
+                    className="group relative h-32 w-32 overflow-hidden rounded-lg border border-dashed border-border bg-muted/40"
+                    disabled={uploadingImage === 'new'}
+                  >
+                    <img
+                      src={imagePreview || newProduct.image_url || '/placeholder.jpg'}
+                      alt="Vista previa"
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 hidden items-center justify-center bg-black/50 text-white group-hover:flex">
+                      {uploadingImage === 'new' ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Upload className="h-5 w-5" />
+                      )}
+                    </div>
+                  </button>
+                  <input
+                    ref={newProductFileInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        handleImageUpload(file, 'new')
+                      }
+                      e.target.value = ''
+                    }}
+                  />
+                </Field>
                 <Field>
                   <FieldLabel>Nombre *</FieldLabel>
                   <Input
@@ -391,6 +429,7 @@ export default function ProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[90px]">Imagen</TableHead>
               <TableHead className="w-[250px]">Producto</TableHead>
               <TableHead>Variante</TableHead>
               <TableHead>Categoria</TableHead>
@@ -403,14 +442,14 @@ export default function ProductsPage() {
             {productsLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <div className="h-10 bg-secondary/50 animate-pulse rounded" />
                   </TableCell>
                 </TableRow>
               ))
             ) : filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   No se encontraron productos
                 </TableCell>
@@ -420,6 +459,42 @@ export default function ProductsPage() {
                 const isEdited = editedProducts.has(product.id)
                 return (
                   <TableRow key={product.id} className={cn(isEdited && 'bg-amber-500/5')}>
+                    <TableCell>
+                      <button
+                        type="button"
+                        onClick={() => rowFileInputs.current[product.id]?.click()}
+                        className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-muted/40"
+                        disabled={uploadingImage === product.id}
+                      >
+                        <img
+                          src={(getProductValue(product, 'image_url') as string) || '/placeholder.jpg'}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 hidden items-center justify-center bg-black/45 text-white group-hover:flex">
+                          {uploadingImage === product.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <ImageIcon className="h-4 w-4" />
+                          )}
+                        </div>
+                      </button>
+                      <input
+                        ref={(el) => {
+                          rowFileInputs.current[product.id] = el
+                        }}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            handleImageUpload(file, product.id)
+                          }
+                          e.target.value = ''
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Input
                         value={getProductValue(product, 'name') as string}

@@ -7,8 +7,8 @@ import './globals.css'
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Oeste Gafas - Sistema de Ventas e Inventario',
-  description: 'Sistema de gestión de ventas e inventario para Oeste Gafas',
+  title: 'OESTE GAFAS | admin',
+  description: 'Sistema de gestión de ventas e inventario de Oeste Gafas',
 }
 
 export const viewport: Viewport = {
