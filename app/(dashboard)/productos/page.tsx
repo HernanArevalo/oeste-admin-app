@@ -88,11 +88,17 @@ export default function ProductsPage() {
 
   const hasChanges = editedProducts.size > 0
 
-  const handleImageUpload = async (file: File, productId: string | 'new') => {
+  const handleImageUpload = async (file: File, productId: string | 'new', productName?: string | null, productVariant?: string | null) => {
     setUploadingImage(productId)
     try {
       const formData = new FormData()
       formData.append('file', file)
+      if (productName) {
+        formData.append('productName', productName)
+      }
+      if (productVariant) {
+        formData.append('productVariant', productVariant)
+      }
 
       const response = await fetch('/api/cloudinary', {
         method: 'POST',
@@ -489,7 +495,7 @@ export default function ProductsPage() {
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) {
-                            handleImageUpload(file, product.id)
+                            handleImageUpload(file, product.id, product.name, product.variant)
                           }
                           e.target.value = ''
                         }}
@@ -538,6 +544,7 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       <Input
+                        min={0}
                         type="number"
                         value={getProductValue(product, 'stock') as number}
                         onChange={(e) => handleFieldChange(product.id, 'stock', parseInt(e.target.value) || 0)}

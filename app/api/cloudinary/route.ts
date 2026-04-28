@@ -4,6 +4,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const productName = formData.get('productName') as string | null
+    const productVariant = formData.get('productVariant') as string | null
 
     if (!file) {
       return NextResponse.json({ error: 'No se proporcionó archivo' }, { status: 400 })
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const timestamp = Math.round(new Date().getTime() / 1000)
-    const folder = 'oeste-gafas/productos'
+    const folder = 'oeste-admin-app/productos' + (productName ? `/${productName}` : '') + (productVariant ? `/${productVariant}` : '')
     
     // Create signature
     const signatureString = `folder=${folder}&timestamp=${timestamp}${apiSecret}`
