@@ -194,7 +194,7 @@ export default function NewSalePage() {
   }
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-3rem)]">
+    <div className="flex gap-x-6 h-[calc(100vh-3rem)]">
       {/* Products Grid */}
       <div className="flex-1 flex flex-col min-w-0">
         <div className="flex items-center justify-between gap-4 mb-4">
@@ -251,9 +251,9 @@ export default function NewSalePage() {
                     <div className="space-y-1">
                       <p className="font-medium text-foreground line-clamp-1">{product.name}</p>
                       {product.variant && (
-                        <p className="text-sm text-muted-foreground line-clamp-1">{product.variant}</p>
+                        <p className="text-gray-400 text-xs">{product.variant}</p>
                       )}
-                      <div className="flex items-center justify-between pt-2">
+                      <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
                         <span className="text-lg font-semibold text-foreground">
                           {formatPrice(product.price)}
                         </span>
@@ -271,8 +271,8 @@ export default function NewSalePage() {
       </div>
 
       {/* Cart Sidebar */}
-      <Card className="w-96 flex flex-col shrink-0">
-        <CardHeader className="border-b border-border pb-4">
+      <Card className="w-96 flex flex-col shrink-0 gap-0 gap-x-6 gap-y-0">
+        <CardHeader className="border-b border-border py-0">
           <CardTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
             Carrito
@@ -382,7 +382,7 @@ export default function NewSalePage() {
                 placeholder="Notas opcionales..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={2}
+                rows={1}
                 className="resize-none"
               />
             </div>
