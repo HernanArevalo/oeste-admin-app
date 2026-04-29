@@ -60,7 +60,7 @@ export function AppSidebar() {
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col border-r border-border bg-sidebar lg:flex">{sidebarContent}</aside>
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-56 flex-col border-r border-border bg-sidebar lg:flex">{sidebarContent}</aside>
 
       <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background px-4 lg:hidden">
         <Link href="/" className="text-lg font-semibold">oeste</Link>

@@ -30,6 +30,7 @@ import {
 import { ArrowLeft, Calendar, CreditCard, MapPin, MessageSquare, Package, Send, Image, ExternalLink, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { formatPrice } from '@/utils'
 
 const supabase = createClient()
 
@@ -60,14 +61,6 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false)
   const [whatsAppMessage, setWhatsAppMessage] = useState('')
   const [copied, setCopied] = useState(false)
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-AR', {
-      style: 'currency',
-      currency: 'ARS',
-      minimumFractionDigits: 0,
-    }).format(price)
-  }
 
   const formatDate = (date: string) => {
     return new Intl.DateTimeFormat('es-AR', {

@@ -190,7 +190,10 @@ export default function NewSalePage() {
           .eq("id", item.product.id);
         if (stockError) throw stockError;
       }
-      toast.success("Venta registrada correctamente");
+      toast.success("Venta registrada correctamente", { 
+        duration: 4000, 
+        position: "top-center", 
+        style: { color: "green" }   });
       clearCart();
       mutate("products");
       setIsCartOpen(false);
@@ -205,10 +208,11 @@ export default function NewSalePage() {
   const cartContent = (
     <>
       <CardHeader className="border-b border-border py-0">
-        <CardTitle className="flex items-center gap-2">
-          <ShoppingCart className="h-5 w-5" /> Carrito
+        <CardTitle className="flex items-center justify-start w-full gap-2 px-0 pt-4">
+          <ShoppingCart className="h-5 w-5 flex flex-row items-center" />
+            Carrito
           {itemCount > 0 && (
-            <Badge variant="secondary" className="ml-auto">
+            <Badge variant="secondary" className="ml-2">
               {itemCount} items
             </Badge>
           )}
@@ -405,7 +409,7 @@ export default function NewSalePage() {
         </div>
         <div className="flex-1 overflow-auto pb-20 lg:pb-0">
           {productsLoading ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
               {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
@@ -419,7 +423,7 @@ export default function NewSalePage() {
               <p>No se encontraron productos</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
               {filteredProducts.map((product) => {
                 const inCart = cart.find(
                   (item) => item.product.id === product.id,
