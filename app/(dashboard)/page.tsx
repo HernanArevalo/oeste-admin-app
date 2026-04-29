@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/utils";
 
 const supabase = createClient();
 
@@ -200,13 +201,6 @@ export default function NewSalePage() {
       setIsSubmitting(false);
     }
   };
-
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 0,
-    }).format(price);
 
   const cartContent = (
     <>
