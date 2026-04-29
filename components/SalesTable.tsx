@@ -1,3 +1,7 @@
+"use client";
+
+import { Fragment, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -5,86 +9,185 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Search, Eye, Calendar, Filter } from 'lucide-react'
-import Link from 'next/link'
-import { formatDate, formatPrice } from '@/utils'
-import { Sale, statusLabels, channelLabels, statusColors } from '@/lib/types'
-import { cn } from '@/lib/utils'
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Search, Eye, Calendar, Filter } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+import { formatPrice } from "@/utils";
+import { Sale, statusLabels, channelLabels, statusColors } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Props {
-  sales: Sale[]
-  isLoading: boolean
+  sales: Sale[];
+  isLoading: boolean;
 }
 
-export function SalesTable ({ isLoading, sales }: Props) {
+const dateFormatter = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "2-digit",
+});
+
+const timeFormatter = new Intl.DateTimeFormat("es-AR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+export function SalesTable({ isLoading, sales }: Props) {
+  const router = useRouter();
+  const [expandedSales, setExpandedSales] = useState<Set<string>>(new Set());
+
+  const toggleSale = (saleId: string) => {
+    setExpandedSales((prev) => {
+      const next = new Set(prev);
+      if (next.has(saleId)) {
+        next.delete(saleId);
+      } else {
+        next.add(saleId);
+      }
+      return next;
+    });
+  };
+
   return (
-          <div className="rounded-lg border border-border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha</TableHead>
-              <TableHead>ID</TableHead>
-              <TableHead>Canal</TableHead>
-              <TableHead>Metodo de Pago</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(5)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell colSpan={7}>
-                    <div className="h-10 bg-secondary/50 animate-pulse rounded" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : sales.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  No se encontraron ventas
+    <div className="rounded-lg border border-border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-10"></TableHead>
+            <TableHead>Fecha</TableHead>
+            <TableHead>ID</TableHead>
+            <TableHead>Canal</TableHead>
+            <TableHead>Metodo de Pago</TableHead>
+            <TableHead>Estado</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoading ? (
+            [...Array(5)].map((_, i) => (
+              <TableRow key={i}>
+                <TableCell colSpan={7}>
+                  <div className="h-10 bg-secondary/50 animate-pulse rounded" />
                 </TableCell>
               </TableRow>
-            ) : (
-              sales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(sale.created_at)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {sale.id.slice(0, 8)}...
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{channelLabels[sale.point_of_sale]}</Badge>
-                  </TableCell>
-                  <TableCell>{sale.payment_method?.name}</TableCell>
-                  <TableCell>
-                    <Badge className={cn('border', statusColors[sale.status])}>
-                      {statusLabels[sale.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatPrice(sale.total)}
-                  </TableCell>
-                  <TableCell>
-                    <Link href={`/ventas/${sale.id}`}>
-                      <Button variant="ghost" size="icon-sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-  )
+            ))
+          ) : sales.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={7}
+                className="text-center py-12 text-muted-foreground"
+              >
+                No se encontraron ventas
+              </TableCell>
+            </TableRow>
+          ) : (
+            sales.map((sale) => {
+              const isExpanded = expandedSales.has(sale.id);
+              const saleDate = new Date(sale.created_at);
+
+              return (
+                <Fragment key={sale.id}>
+                  <TableRow
+                    key={sale.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/ventas/${sale.id}`)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSale(sale.id)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+                        aria-label={
+                          isExpanded ? "Ocultar productos" : "Mostrar productos"
+                        }
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "h-4 w-4 transition-transform",
+                            isExpanded && "rotate-90",
+                          )}
+                        />
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <div className="leading-tight">
+                        <p>{dateFormatter.format(saleDate)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {timeFormatter.format(saleDate)}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="leading-tight">
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {sale.id.slice(0, 8)}...
+                        </p>
+                        <p className="font-mono text-sm text-white">#3456</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {channelLabels[sale.point_of_sale]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{sale.payment_method?.name}</TableCell>
+                    <TableCell>
+                      <Badge
+                        className={cn("border", statusColors[sale.status])}
+                      >
+                        {statusLabels[sale.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatPrice(sale.total)}
+                    </TableCell>
+                  </TableRow>
+                  {isExpanded && (
+                    <>
+                      <TableRow>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead>Producto</TableHead>
+                        <TableHead>Cantidad</TableHead>
+                        <TableHead>Precio unitario</TableHead>
+                        <TableHead>Subtotal</TableHead>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell colSpan={7} className="bg-muted/20">
+                          {sale.items && sale.items.length > 0 ? (
+                            <div className="space-y-2 py-2">
+                              {sale.items.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center justify-between text-sm"
+                                >
+                                  <span>
+                                    {item.product?.name ??
+                                      "Producto sin nombre"}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    x{item.quantity} ·{" "}
+                                    {formatPrice(item.unit_price)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="py-2 text-sm text-muted-foreground">
+                              Esta venta no tiene productos cargados.
+                            </p>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    </>
+                  )}
+                </Fragment>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
 }

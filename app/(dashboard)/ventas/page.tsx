@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SalesTable } from '@/components/SalesTable'
-import { Search, Filter } from 'lucide-react'
+import { Search, Filter, PlusCircle } from 'lucide-react'
 import { formatPrice } from '@/utils'
 
 const supabase = createClient()
@@ -17,7 +17,7 @@ const supabase = createClient()
 const fetcher = async () => {
   const { data, error } = await supabase
     .from('sales')
-    .select('*, payment_method:payment_methods(*)')
+    .select('*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data as Sale[]
@@ -48,7 +48,10 @@ export default function SalesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Ventas</h1>
         <Link href="/">
-          <Button>Nueva Venta</Button>
+          <Button>
+            <PlusCircle />
+            Nueva Venta
+            </Button>
         </Link>
       </div>
 
