@@ -16,31 +16,31 @@ import { cn } from '@/lib/utils'
 
 const supabase = createClient()
 
-const fetcher = async (key: string) => {
-  if (key === 'products') {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*, category:categories(*)')
-      .eq('is_active', true)
-      .gt('stock', 0)
-      .order('name')
-    if (error) throw error
-    return data as Product[]
-  }
-  if (key === 'payment_methods') {
-    const { data, error } = await supabase
-      .from('payment_methods')
-      .select('*')
-      .order('name')
-    if (error) throw error
-    return data as PaymentMethod[]
-  }
-  return null
+const fetchProducts = async (): Promise<Product[]> => {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, category:categories(*)')
+    .eq('is_active', true)
+    .gt('stock', 0)
+    .order('name')
+
+  if (error) throw error
+  return data
+}
+
+const fetchPaymentMethods = async (): Promise<PaymentMethod[]> => {
+  const { data, error } = await supabase
+    .from('payment_methods')
+    .select('*')
+    .order('name')
+
+  if (error) throw error
+  return data
 }
 
 export default function NewSalePage() {
-  const { data: products, isLoading: productsLoading } = useSWR('products', fetcher)
-  const { data: paymentMethods } = useSWR('payment_methods', fetcher)
+  const { data: products, isLoading: productsLoading } = useSWR<Product[]>('products', fetchProducts)
+  const { data: paymentMethods } = useSWR<PaymentMethod[]>('payment_methods', fetchPaymentMethods)
 
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
