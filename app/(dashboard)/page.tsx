@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Search, Plus, Minus, Trash2, ShoppingCart, Check, AlertCircle } from 'lucide-react'
+import { Search, Plus, Minus, Trash2, ShoppingCart, Check, AlertCircle, MessageCircleMore  } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -232,7 +232,7 @@ export default function NewSalePage() {
                     onClick={() => addToCart(product)}
                     className={cn(
                       'relative p-4 rounded-lg border text-left transition-all',
-                      'bg-card hover:bg-accent/50 hover:border-foreground/20',
+                      'bg-card hover:bg-accent/90 hover:border-foreground/20',
                       inCart && 'ring-2 ring-primary'
                     )}
                   >
@@ -407,7 +407,7 @@ export default function NewSalePage() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-4 flex-wrap">
             <Button
               variant="outline"
               className="flex-1"
@@ -427,6 +427,20 @@ export default function NewSalePage() {
                 <>
                   <Check className="h-4 w-4 mr-1" />
                   Confirmar
+                </>
+              )}
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={handleSubmit}
+              disabled={cart.length === 0 || isSubmitting}
+            >
+              {isSubmitting ? (
+                'Procesando...'
+              ) : (
+                <>
+                  <MessageCircleMore className="h-4 w-4 mr-1" />
+                  Confirmar y Enviar por Whatsapp
                 </>
               )}
             </Button>
