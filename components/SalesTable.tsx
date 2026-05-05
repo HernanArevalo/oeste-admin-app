@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -11,8 +11,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Eye, Calendar, Filter } from "lucide-react";
-import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { formatPrice } from "@/utils";
 import { Sale, statusLabels, channelLabels, statusColors } from "@/lib/types";
@@ -52,16 +50,16 @@ export function SalesTable({ isLoading, sales }: Props) {
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      <Table>
+      <Table className="min-w-[900px] table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10"></TableHead>
-            <TableHead>Fecha</TableHead>
-            <TableHead>ID</TableHead>
-            <TableHead>Canal</TableHead>
-            <TableHead>Metodo de Pago</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Total</TableHead>
+            <TableHead className="w-12 text-center"></TableHead>
+            <TableHead className="w-32 text-center">Fecha</TableHead>
+            <TableHead className="w-36 text-center">ID</TableHead>
+            <TableHead className="w-28 text-center">Canal</TableHead>
+            <TableHead className="w-40 text-center">Método de Pago</TableHead>
+            <TableHead className="w-40 text-center">Estado</TableHead>
+            <TableHead className="w-32 text-right">Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -69,7 +67,7 @@ export function SalesTable({ isLoading, sales }: Props) {
             [...Array(5)].map((_, i) => (
               <TableRow key={i}>
                 <TableCell colSpan={7}>
-                  <div className="h-10 bg-secondary/50 animate-pulse rounded" />
+                  <div className="h-10 rounded bg-secondary/50 animate-pulse" />
                 </TableCell>
               </TableRow>
             ))
@@ -77,7 +75,7 @@ export function SalesTable({ isLoading, sales }: Props) {
             <TableRow>
               <TableCell
                 colSpan={7}
-                className="text-center py-12 text-muted-foreground"
+                className="py-12 text-center text-muted-foreground"
               >
                 No se encontraron ventas
               </TableCell>
@@ -86,22 +84,31 @@ export function SalesTable({ isLoading, sales }: Props) {
             sales.map((sale) => {
               const isExpanded = expandedSales.has(sale.id);
               const saleDate = new Date(sale.created_at);
+              const saleItems = [...(sale.items ?? [])].sort((a, b) =>
+                (a.product?.name ?? "Producto sin nombre").localeCompare(
+                  b.product?.name ?? "Producto sin nombre",
+                  "es",
+                ),
+              );
 
               return (
                 <Fragment key={sale.id}>
                   <TableRow
-                    key={sale.id}
                     className="cursor-pointer"
                     onClick={() => router.push(`/ventas/${sale.id}`)}
                   >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
+                    <TableCell
+                      className="text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         type="button"
                         onClick={() => toggleSale(sale.id)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-muted"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-muted"
                         aria-label={
                           isExpanded ? "Ocultar productos" : "Mostrar productos"
                         }
+                        aria-expanded={isExpanded}
                       >
                         <ChevronRight
                           className={cn(
@@ -111,7 +118,7 @@ export function SalesTable({ isLoading, sales }: Props) {
                         />
                       </button>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <div className="leading-tight">
                         <p>{dateFormatter.format(saleDate)}</p>
                         <p className="text-xs text-muted-foreground">
@@ -119,21 +126,27 @@ export function SalesTable({ isLoading, sales }: Props) {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <div className="leading-tight">
                         <p className="font-mono text-xs text-muted-foreground">
                           {sale.id.slice(0, 8)}...
                         </p>
-                        <p className="font-mono text-sm text-white">#3456</p>
+                        <p className="font-mono text-sm text-foreground">
+                          {sale.order_number != null ? `#${sale.order_number}` : "Sin orden"}
+                        </p>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       <Badge variant="outline">
                         {channelLabels[sale.point_of_sale]}
                       </Badge>
                     </TableCell>
-                    <TableCell>{sale.payment_method?.name}</TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
+                      <div className="truncate" title={sale.payment_method?.name ?? "-"}>
+                        {sale.payment_method?.name ?? "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
                       <Badge
                         className={cn("border", statusColors[sale.status])}
                       >
@@ -146,59 +159,85 @@ export function SalesTable({ isLoading, sales }: Props) {
                   </TableRow>
 
                   {isExpanded && (
-                      <>
-                        <TableRow className="w-full mx-auto">
-                          <TableHead colSpan={3}>Producto</TableHead>
-                          <TableHead>Cantidad</TableHead>
-                          <TableHead>Precio unitario</TableHead>
-                          <TableHead>Subtotal</TableHead>
-                        </TableRow>
-                        {sale.items && sale.items.length > 0 ? (
-                          <>
-                            {sale.items.map((item) => (
-                              <TableRow className="" key={item.id}>
-                                <TableCell
-                                  colSpan={3}
-                                  className="flex flex-row gap-2 items-center"
-                                >
-                                  <div className="group relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted/40">
-                                    <img
-                                      src={
-                                        item.product?.image_url ||
-                                        "/placeholder.jpg"
-                                      }
-                                      alt={item.product?.name}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <span>
-                                      {item.product?.name ??
-                                        "Producto sin nombre"}
-                                    </span>
-                                    <span className="text-xs text-gray-600">
-                                      {item.product?.variant ?? "-"}
-                                    </span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {item.quantity}
-                                </TableCell>
-                                <TableCell>
-                                  {formatPrice(item.unit_price)}
-                                </TableCell>
-                                <TableCell>
-                                  {formatPrice(item.quantity * item.unit_price)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </>
-                        ) : (
-                          <p className="py-2 text-sm text-muted-foreground">
-                            Esta venta no tiene productos cargados.
-                          </p>
-                        )}
-                      </>
+                    <TableRow className="bg-muted/20 hover:bg-muted/20">
+                      <TableCell colSpan={7} className="px-4 py-4">
+                        <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-lg border border-border bg-background/70">
+                          <table className="w-full table-fixed text-sm">
+                            <thead className="bg-muted/50 text-muted-foreground">
+                              <tr className="border-b border-border">
+                                <th className="w-[46%] px-4 py-3 text-left font-medium">
+                                  Producto
+                                </th>
+                                <th className="w-[18%] px-4 py-3 text-center font-medium">
+                                  Cantidad
+                                </th>
+                                <th className="w-[18%] px-4 py-3 text-right font-medium">
+                                  Precio unitario
+                                </th>
+                                <th className="w-[18%] px-4 py-3 text-right font-medium">
+                                  Subtotal
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {saleItems.length > 0 ? (
+                                saleItems.map((item) => (
+                                  <tr
+                                    className="border-b border-border/70 last:border-0"
+                                    key={item.id}
+                                  >
+                                    <td className="px-4 py-3 align-middle">
+                                      <div className="flex min-w-0 items-center gap-3">
+                                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted/40">
+                                          <img
+                                            src={
+                                              item.product?.image_url ||
+                                              "/placeholder.jpg"
+                                            }
+                                            alt={
+                                              item.product?.name ??
+                                              "Producto sin nombre"
+                                            }
+                                            className="h-full w-full object-cover"
+                                          />
+                                        </div>
+                                        <div className="min-w-0 leading-tight">
+                                          <p className="truncate font-medium text-foreground">
+                                            {item.product?.name ??
+                                              "Producto sin nombre"}
+                                          </p>
+                                          <p className="truncate text-xs text-muted-foreground">
+                                            {item.product?.variant ?? "Sin variante"}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center align-middle">
+                                      {item.quantity}
+                                    </td>
+                                    <td className="px-4 py-3 text-right align-middle">
+                                      {formatPrice(item.unit_price)}
+                                    </td>
+                                    <td className="px-4 py-3 text-right align-middle font-medium">
+                                      {formatPrice(item.total)}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td
+                                    colSpan={4}
+                                    className="px-4 py-6 text-center text-sm text-muted-foreground"
+                                  >
+                                    Esta venta no tiene productos cargados.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   )}
                 </Fragment>
               );
