@@ -50,11 +50,12 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border p-4">
-        <Link href="/subir-comprobante" target="_blank" className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors">
-          <Upload className="h-5 w-5" />
-          Link Comprobante
-        </Link>
+      <div className="border-t border-sidebar-border p-4 flex flex-col justify-center gap-4">
+        <div className="flex items-center gap-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors">
+          <User className="h-5 w-5"/>
+          Usuario
+        </div>
+        <Button className='bg-white text-xs p-1 font-bold w-full'>Cerrar Sesión</Button>
       </div>
     </>
   )
