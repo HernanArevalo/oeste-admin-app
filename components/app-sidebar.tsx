@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Package, ShoppingCart, ListOrdered, Tags, CreditCard, Upload, Menu } from 'lucide-react'
+import { Package, ShoppingCart, ListOrdered, Tags, CreditCard, Upload, Menu, Users, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
@@ -13,7 +13,8 @@ const navigation = [
   { name: 'Ventas', href: '/ventas', icon: ListOrdered },
   { name: 'Productos', href: '/productos', icon: Package },
   { name: 'Categorias', href: '/categorias', icon: Tags },
-  { name: 'Metodos de Pago', href: '/metodos-pago', icon: CreditCard },
+  { name: 'Métodos de Pago', href: '/metodos-pago', icon: CreditCard },
+  { name: 'Usuarios', href: '/usuarios', icon: Users },
 ]
 
 export function AppSidebar() {
