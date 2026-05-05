@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -144,43 +144,61 @@ export function SalesTable({ isLoading, sales }: Props) {
                       {formatPrice(sale.total)}
                     </TableCell>
                   </TableRow>
+
                   {isExpanded && (
-                    <>
-                      <TableRow>
-                        <TableHead className="w-10"></TableHead>
-                        <TableHead>Producto</TableHead>
-                        <TableHead>Cantidad</TableHead>
-                        <TableHead>Precio unitario</TableHead>
-                        <TableHead>Subtotal</TableHead>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={7} className="bg-muted/20">
-                          {sale.items && sale.items.length > 0 ? (
-                            <div className="space-y-2 py-2">
-                              {sale.items.map((item) => (
-                                <div
-                                  key={item.id}
-                                  className="flex items-center justify-between text-sm"
+                      <>
+                        <TableRow className="w-full mx-auto">
+                          <TableHead colSpan={3}>Producto</TableHead>
+                          <TableHead>Cantidad</TableHead>
+                          <TableHead>Precio unitario</TableHead>
+                          <TableHead>Subtotal</TableHead>
+                        </TableRow>
+                        {sale.items && sale.items.length > 0 ? (
+                          <>
+                            {sale.items.map((item) => (
+                              <TableRow className="" key={item.id}>
+                                <TableCell
+                                  colSpan={3}
+                                  className="flex flex-row gap-2 items-center"
                                 >
-                                  <span>
-                                    {item.product?.name ??
-                                      "Producto sin nombre"}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    x{item.quantity} ·{" "}
-                                    {formatPrice(item.unit_price)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="py-2 text-sm text-muted-foreground">
-                              Esta venta no tiene productos cargados.
-                            </p>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    </>
+                                  <div className="group relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted/40">
+                                    <img
+                                      src={
+                                        item.product?.image_url ||
+                                        "/placeholder.jpg"
+                                      }
+                                      alt={item.product?.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <span>
+                                      {item.product?.name ??
+                                        "Producto sin nombre"}
+                                    </span>
+                                    <span className="text-xs text-gray-600">
+                                      {item.product?.variant ?? "-"}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {item.quantity}
+                                </TableCell>
+                                <TableCell>
+                                  {formatPrice(item.unit_price)}
+                                </TableCell>
+                                <TableCell>
+                                  {formatPrice(item.quantity * item.unit_price)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </>
+                        ) : (
+                          <p className="py-2 text-sm text-muted-foreground">
+                            Esta venta no tiene productos cargados.
+                          </p>
+                        )}
+                      </>
                   )}
                 </Fragment>
               );
