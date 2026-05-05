@@ -244,6 +244,10 @@ export default function ProductsPage() {
         <h1 className="text-2xl font-semibold text-foreground">Productos</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar 
+          </Button>
+          <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
             <Download className="h-4 w-4 mr-2" />
             Exportar
           </Button>
@@ -427,8 +431,8 @@ export default function ProductsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[90px]">Imagen</TableHead>
-              <TableHead className="w-[250px]">Producto</TableHead>
+              <TableHead className="w-fit">Imagen</TableHead>
+              <TableHead className="w-[150px]">Producto</TableHead>
               <TableHead>Variante</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-right">Precio</TableHead>
@@ -457,7 +461,7 @@ export default function ProductsPage() {
                 const isEdited = editedProducts.has(product.id)
                 return (
                   <TableRow key={product.id} className={cn(isEdited && 'bg-amber-500/5')}>
-                    <TableCell>
+                    <TableCell className='w-fit'>
                       <button
                         type="button"
                         onClick={() => rowFileInputs.current[product.id]?.click()}
