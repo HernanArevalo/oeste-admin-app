@@ -68,13 +68,13 @@ export default function PaymentMethodsPage() {
       })
       if (error) throw error
 
-      toast.success('Metodo de pago creado')
+      toast.success('Método de pago creado')
       setIsNewDialogOpen(false)
       resetForm()
       mutate('payment_methods')
     } catch (error) {
       console.error('Error creating payment method:', error)
-      toast.error('Error al crear metodo de pago')
+      toast.error('Error al crear Método de pago')
     } finally {
       setIsSaving(false)
     }
@@ -97,13 +97,13 @@ export default function PaymentMethodsPage() {
         .eq('id', editingMethod.id)
       if (error) throw error
 
-      toast.success('Metodo de pago actualizado')
+      toast.success('Método de pago actualizado')
       setEditingMethod(null)
       resetForm()
       mutate('payment_methods')
     } catch (error) {
       console.error('Error updating payment method:', error)
-      toast.error('Error al actualizar metodo de pago')
+      toast.error('Error al actualizar Método de pago')
     } finally {
       setIsSaving(false)
     }
@@ -114,7 +114,7 @@ export default function PaymentMethodsPage() {
       const { error } = await supabase.from('payment_methods').delete().eq('id', id)
       if (error) throw error
 
-      toast.success('Metodo de pago eliminado')
+      toast.success('Método de pago eliminado')
       mutate('payment_methods')
     } catch (error) {
       console.error('Error deleting payment method:', error)
@@ -150,8 +150,8 @@ export default function PaymentMethodsPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nuevo Metodo de Pago</DialogTitle>
-              <DialogDescription>Configura un nuevo metodo de pago</DialogDescription>
+              <DialogTitle>Nuevo Método de Pago</DialogTitle>
+              <DialogDescription>Configura un nuevo Método de pago</DialogDescription>
             </DialogHeader>
             <FieldGroup>
               <Field>
@@ -239,9 +239,9 @@ export default function PaymentMethodsPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Eliminar metodo de pago</AlertDialogTitle>
+                          <AlertDialogTitle>Eliminar Método  de pago</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Esta accion no se puede deshacer. No podras eliminar el metodo si
+                            Esta accion no se puede deshacer. No podras eliminar el Método si
                             tiene ventas asociadas.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -265,7 +265,7 @@ export default function PaymentMethodsPage() {
       <Dialog open={!!editingMethod} onOpenChange={(open) => !open && closeEditDialog()}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Metodo de Pago</DialogTitle>
+            <DialogTitle>Editar Método de Pago</DialogTitle>
             <DialogDescription>Modifica la configuracion del metodo</DialogDescription>
           </DialogHeader>
           <FieldGroup>

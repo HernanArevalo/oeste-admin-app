@@ -195,10 +195,11 @@ export default function NewSalePage() {
           .eq("id", item.product.id);
         if (stockError) throw stockError;
       }
-      toast.success("Venta registrada correctamente", { 
-        duration: 4000, 
-        position: "top-center", 
-        style: { color: "green" }   });
+      toast.success("Venta registrada correctamente", {
+        duration: 4000,
+        position: "top-center",
+        style: { color: "green" },
+      });
       clearCart();
       mutate("products");
       setIsCartOpen(false);
@@ -212,10 +213,10 @@ export default function NewSalePage() {
 
   const cartContent = (
     <>
-      <CardHeader className="border-b border-border py-0">
+      <CardHeader className="border-b border-border">
         <CardTitle className="flex items-center justify-start w-full gap-2 px-0 pt-4">
           <ShoppingCart className="h-5 w-5 flex flex-row items-center" />
-            Carrito
+          Carrito
           {itemCount > 0 && (
             <Badge variant="secondary" className="ml-2">
               {itemCount} items
@@ -280,7 +281,7 @@ export default function NewSalePage() {
             ))
           )}
         </div>
-        <div className="space-y-3 border-t border-border pt-4">
+        <div className="space-y-3 border-t border-border pt-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
@@ -304,7 +305,7 @@ export default function NewSalePage() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                Metodo de Pago
+                Método de Pago
               </label>
               <Select
                 value={paymentMethodId}
@@ -368,7 +369,7 @@ export default function NewSalePage() {
             />
           </div>
         </div>
-        <div className="space-y-2 border-t border-border pt-4 mt-4">
+        <div className="space-y-2 border-t border-border pt-2 mt-3">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
             <span>{formatPrice(subtotal)}</span>
@@ -384,7 +385,7 @@ export default function NewSalePage() {
             <span>{formatPrice(total)}</span>
           </div>
         </div>
-        <div className="flex gap-2 mt-4 flex-wrap">
+        <div className="flex gap-2 mt-2 flex-wrap">
           <Button
             variant="outline"
             className="flex-1"
@@ -512,7 +513,7 @@ export default function NewSalePage() {
         </div>
       </div>
 
-      <Card className="hidden lg:flex w-96 shrink-0 flex-col gap-0">
+      <Card className="hidden lg:flex w-96 shrink-0 flex-col gap-0 py-0">
         {cartContent}
       </Card>
 

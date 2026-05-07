@@ -317,7 +317,7 @@ Gracias por tu compra!`
               <div className="flex items-center gap-3">
                 <CreditCard className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Metodo de Pago</p>
+                  <p className="text-sm text-muted-foreground">Método de Pago</p>
                   <p className="font-medium">{sale.payment_method?.name}</p>
                 </div>
               </div>
