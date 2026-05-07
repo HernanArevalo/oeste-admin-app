@@ -36,6 +36,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const supabase = createClient();
 
@@ -76,6 +77,8 @@ export default function NewSalePage() {
   const [paymentMethodId, setPaymentMethodId] = useState<string>("");
   const [pointOfSale, setPointOfSale] = useState<Channel>("LOCAL");
   const [notes, setNotes] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -155,7 +158,7 @@ export default function NewSalePage() {
 
   const handleSubmit = async () => {
     if (cart.length === 0) return toast.error("El carrito esta vacio");
-    if (!paymentMethodId) return toast.error("Selecciona un metodo de pago");
+    if (!paymentMethodId) return toast.error("Selecciona un método de pago");
     setIsSubmitting(true);
     try {
       const { data: sale, error: saleError } = await supabase
@@ -168,6 +171,8 @@ export default function NewSalePage() {
           discount,
           total,
           status: "PENDING",
+          order_number: orderNumber || null,
+          is_paid: isPaid || false,
         })
         .select()
         .single();
@@ -319,6 +324,37 @@ export default function NewSalePage() {
               </Select>
             </div>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          
+            <div className="w-fit">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Orden web (opcional)
+              </label>
+              <Textarea
+                placeholder="#0000"
+                value={orderNumber}
+                onChange={(e) => {
+                  let value = e.target.value;
+
+                  if (!/^#?\d*$/.test(value)) return;
+
+                  if (value !== "" && !value.startsWith("#")) {
+                    value = `#${value}`;
+                  }
+                  setOrderNumber(value);
+                }}
+                rows={1}
+                className="resize-none w-fit"
+              />
+            </div>
+            <div className="w-fit">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Pagado
+              </label>
+              <Checkbox checked={isPaid} onChange={(e) => setIsPaid(true)} />
+            </div>
+          </div>
+
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">
               Notas
