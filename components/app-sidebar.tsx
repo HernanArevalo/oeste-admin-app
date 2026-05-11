@@ -51,9 +51,9 @@ export function AppSidebar() {
       </nav>
 
       <div className="border-t border-sidebar-border p-4 flex flex-col justify-center gap-4">
-        <div className="flex items-center gap-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors">
+        <div className="py-3 px-2 flex items-center gap-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors">
           <User className="h-5 w-5"/>
-          Usuario
+          Oeste Gafas
         </div>
         <Button className='bg-white text-xs p-1 font-bold w-full'>Cerrar Sesión</Button>
       </div>

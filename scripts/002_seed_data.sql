@@ -3,10 +3,10 @@
 -- Insert default categories
 INSERT INTO categories (name) VALUES 
   ('Gafas de Sol'),
-  ('Gafas de Ver'),
+  ('Armazones'),
   ('Lentes de Contacto'),
   ('Accesorios'),
-  ('Estuches')
+  ('Otros')
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert default payment methods
@@ -60,7 +60,7 @@ SELECT
   50,
   c.id,
   true
-FROM categories c WHERE c.name = 'Estuches'
+FROM categories c WHERE c.name = 'Otros'
 ON CONFLICT DO NOTHING;
 
 INSERT INTO products (name, variant, price, stock, category_id, is_active)
