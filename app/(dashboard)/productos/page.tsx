@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { ChangeEvent, useState, useMemo, useCallback, useRef } from 'react'
+import * as XLSX from 'xlsx'
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { Product, Category, ProductRowState } from '@/lib/types'
@@ -33,6 +34,36 @@ import { cn } from '@/lib/utils'
 
 const supabase = createClient()
 
+type ImportRow = Record<string, string | number | boolean | null | undefined>
+
+const getImportValue = (row: ImportRow, columnName: string) => {
+  const normalizedColumnName = columnName.trim().toLowerCase()
+  const matchingKey = Object.keys(row).find((key) => key.trim().toLowerCase() === normalizedColumnName)
+  const value = matchingKey ? row[matchingKey] : undefined
+  return value === null || value === undefined ? '' : String(value).trim()
+}
+
+const parseImportNumber = (value: string, fallback = 0) => {
+  const normalizedValue = value.replace(/\./g, '').replace(',', '.').trim()
+  if (!normalizedValue) return fallback
+
+  const parsedValue = Number(normalizedValue)
+  return Number.isFinite(parsedValue) ? parsedValue : fallback
+}
+
+const getImportedProductNameParts = (rawName: string) => rawName.split(/\s+/).filter(Boolean)
+
+const buildImportedProductName = (rawName: string) => {
+  const [firstNamePart] = getImportedProductNameParts(rawName)
+  return firstNamePart || rawName
+}
+
+const buildImportedProductVariant = (rawName: string, attributeValue: string) => {
+  if (attributeValue) return attributeValue
+
+  return getImportedProductNameParts(rawName).slice(1).join(' ').trim() || null
+}
+
 const fetchProducts = async () => {
   const { data, error } = await supabase
     .from('products')
@@ -58,8 +89,10 @@ export default function ProductsPage() {
   const [editedProducts, setEditedProducts] = useState<Map<string, ProductRowState>>(new Map())
   const [isNewProductOpen, setIsNewProductOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
   const rowFileInputs = useRef<Record<string, HTMLInputElement | null>>({})
   const newProductFileInput = useRef<HTMLInputElement | null>(null)
+  const importFileInput = useRef<HTMLInputElement | null>(null)
 
   // New product form state
   const [newProduct, setNewProduct] = useState({
@@ -178,6 +211,90 @@ export default function ProductsPage() {
     }
   }
 
+  const handleImportProducts = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    setIsImporting(true)
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json<ImportRow>(worksheet, { defval: '' })
+
+      if (!rows.length) {
+        toast.error('El archivo no tiene productos para importar')
+        return
+      }
+
+      const categoryNames = Array.from(
+        new Set(
+          rows
+            .map((row) => getImportValue(row, 'Categorías'))
+            .filter(Boolean)
+        )
+      )
+
+      const categoryByName = new Map((categories || []).map((category) => [category.name, category]))
+      const missingCategoryNames = categoryNames.filter((categoryName) => !categoryByName.has(categoryName))
+
+      if (missingCategoryNames.length) {
+        const { data: createdCategories, error: categoriesError } = await supabase
+          .from('categories')
+          .upsert(
+            missingCategoryNames.map((name) => ({ name })),
+            { onConflict: 'name' }
+          )
+          .select('*')
+
+        if (categoriesError) throw categoriesError
+
+        createdCategories?.forEach((category) => {
+          categoryByName.set(category.name, category as Category)
+        })
+      }
+
+      const productsToImport = rows
+        .map((row) => {
+          const rawName = getImportValue(row, 'Nombre')
+          if (!rawName) return null
+
+          const categoryName = getImportValue(row, 'Categorías')
+          const category = categoryName ? categoryByName.get(categoryName) : null
+
+          return {
+            name: buildImportedProductName(rawName),
+            variant: buildImportedProductVariant(rawName, getImportValue(row, 'Valor atributo 1')),
+            price: parseImportNumber(getImportValue(row, 'Precio')),
+            stock: Math.trunc(parseImportNumber(getImportValue(row, 'Stock'))),
+            category_id: category?.id || null,
+            is_active: true,
+            image_url: null,
+          }
+        })
+        .filter((product): product is NonNullable<typeof product> => Boolean(product))
+
+      if (!productsToImport.length) {
+        toast.error('No se encontraron productos con nombre para importar')
+        return
+      }
+
+      const { error: productsError } = await supabase.from('products').insert(productsToImport)
+      if (productsError) throw productsError
+
+      toast.success(`${productsToImport.length} producto(s) importado(s)`)
+      mutate('categories')
+      mutate('all-products')
+      mutate('products')
+    } catch (error) {
+      console.error('Error importing products:', error)
+      toast.error('Error al importar productos')
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
   const handleCreateProduct = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.stock) {
       toast.error('Completa los campos requeridos')
@@ -243,9 +360,20 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Productos</h1>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importar 
+          <input
+            ref={importFileInput}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleImportProducts}
+          />
+          <Button variant="outline" onClick={() => importFileInput.current?.click()} disabled={isImporting}>
+            {isImporting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4 mr-2" />
+            )}
+            {isImporting ? 'Importando...' : 'Importar'}
           </Button>
           <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
             <Download className="h-4 w-4 mr-2" />
