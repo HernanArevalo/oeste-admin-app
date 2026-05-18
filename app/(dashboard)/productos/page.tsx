@@ -438,12 +438,12 @@ const handleImportProducts = async (event: ChangeEvent<HTMLInputElement>) => {
             {isImporting ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
-              <Upload className="h-4 w-4 mr-2" />
+              <Download className="h-4 w-4 mr-2" />
             )}
             {isImporting ? 'Importando...' : 'Importar'}
           </Button>
           <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
-            <Download className="h-4 w-4 mr-2" />
+            <Upload className="h-4 w-4 mr-2" />
             Exportar
           </Button>
           <Dialog open={isNewProductOpen} onOpenChange={setIsNewProductOpen}>
