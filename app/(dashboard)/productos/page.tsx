@@ -31,6 +31,7 @@ import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { capitalize } from '@/utils'
 
 const supabase = createClient()
 
@@ -55,13 +56,29 @@ const getImportedProductNameParts = (rawName: string) => rawName.split(/\s+/).fi
 
 const buildImportedProductName = (rawName: string) => {
   const [firstNamePart] = getImportedProductNameParts(rawName)
-  return firstNamePart || rawName
+  return capitalize(firstNamePart) || capitalize(rawName)
 }
 
-const buildImportedProductVariant = (rawName: string, attributeValue: string) => {
+const buildImportedProductVariant = (
+  rawName: string,
+  attributeValue: string
+) => {
   if (attributeValue) return attributeValue
 
-  return getImportedProductNameParts(rawName).slice(1).join(' ').trim() || null
+  const variantParts =
+    getImportedProductNameParts(rawName).slice(1)
+
+  if (!variantParts.length) return null
+
+  if (variantParts[0] === '-') {
+    variantParts.shift()
+  }
+
+  const variant = capitalize(
+    variantParts.join(' ').trim()
+  )
+
+  return variant || null
 }
 
 const fetchProducts = async () => {
@@ -199,7 +216,7 @@ export default function ProductsPage() {
           .eq('id', id)
         if (error) throw error
       }
-      toast.success(`${updates.length} producto(s) actualizado(s)`)
+      toast.success(`${updates.length} producto${updates.length !== 1 ? 's' : ''} actualizado${updates.length !== 1 ? 's' : ''}`)
       setEditedProducts(new Map())
       mutate('all-products')
       mutate('products')
@@ -211,36 +228,46 @@ export default function ProductsPage() {
     }
   }
 
-  const handleImportProducts = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
+const handleImportProducts = async (event: ChangeEvent<HTMLInputElement>) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
 
-    if (!file) return
+  if (!file) return
 
-    setIsImporting(true)
-    try {
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json<ImportRow>(worksheet, { defval: '' })
+  setIsImporting(true)
 
-      if (!rows.length) {
-        toast.error('El archivo no tiene productos para importar')
-        return
-      }
+  try {
+    const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]]
 
-      const categoryNames = Array.from(
-        new Set(
-          rows
-            .map((row) => getImportValue(row, 'Categorías'))
-            .filter(Boolean)
-        )
+    const rows = XLSX.utils.sheet_to_json<ImportRow>(worksheet, {
+      defval: '',
+    })
+
+    if (!rows.length) {
+      toast.error('El archivo no tiene productos para importar')
+      return
+    }
+
+    const categoryNames = Array.from(
+      new Set(
+        rows
+          .map((row) => getImportValue(row, 'Categorías'))
+          .filter(Boolean)
       )
+    )
 
-      const categoryByName = new Map((categories || []).map((category) => [category.name, category]))
-      const missingCategoryNames = categoryNames.filter((categoryName) => !categoryByName.has(categoryName))
+    const categoryByName = new Map(
+      (categories || []).map((category) => [category.name, category])
+    )
 
-      if (missingCategoryNames.length) {
-        const { data: createdCategories, error: categoriesError } = await supabase
+    const missingCategoryNames = categoryNames.filter(
+      (categoryName) => !categoryByName.has(categoryName)
+    )
+
+    if (missingCategoryNames.length) {
+      const { data: createdCategories, error: categoriesError } =
+        await supabase
           .from('categories')
           .upsert(
             missingCategoryNames.map((name) => ({ name })),
@@ -248,52 +275,92 @@ export default function ProductsPage() {
           )
           .select('*')
 
-        if (categoriesError) throw categoriesError
+      if (categoriesError) throw categoriesError
 
-        createdCategories?.forEach((category) => {
-          categoryByName.set(category.name, category as Category)
-        })
-      }
-
-      const productsToImport = rows
-        .map((row) => {
-          const rawName = getImportValue(row, 'Nombre')
-          if (!rawName) return null
-
-          const categoryName = getImportValue(row, 'Categorías')
-          const category = categoryName ? categoryByName.get(categoryName) : null
-
-          return {
-            name: buildImportedProductName(rawName),
-            variant: buildImportedProductVariant(rawName, getImportValue(row, 'Valor atributo 1')),
-            price: parseImportNumber(getImportValue(row, 'Precio')),
-            stock: Math.trunc(parseImportNumber(getImportValue(row, 'Stock'))),
-            category_id: category?.id || null,
-            is_active: true,
-            image_url: null,
-          }
-        })
-        .filter((product): product is NonNullable<typeof product> => Boolean(product))
-
-      if (!productsToImport.length) {
-        toast.error('No se encontraron productos con nombre para importar')
-        return
-      }
-
-      const { error: productsError } = await supabase.from('products').insert(productsToImport)
-      if (productsError) throw productsError
-
-      toast.success(`${productsToImport.length} producto(s) importado(s)`)
-      mutate('categories')
-      mutate('all-products')
-      mutate('products')
-    } catch (error) {
-      console.error('Error importing products:', error)
-      toast.error('Error al importar productos')
-    } finally {
-      setIsImporting(false)
+      createdCategories?.forEach((category) => {
+        categoryByName.set(category.name, category as Category)
+      })
     }
+
+    const productsToImport = rows
+      .map((row) => {
+        const rawName = getImportValue(row, 'Nombre')
+
+        if (!rawName) return null
+
+        const categoryName = getImportValue(row, 'Categorías')
+
+        const category = categoryName
+          ? categoryByName.get(categoryName)
+          : null
+
+        return {
+          name: buildImportedProductName(rawName),
+          variant: buildImportedProductVariant(
+            rawName,
+            getImportValue(row, 'Valor atributo 1')
+          ),
+          price: parseImportNumber(getImportValue(row, 'Precio')),
+          stock: Math.trunc(
+            parseImportNumber(getImportValue(row, 'Stock'))
+          ),
+          category_id: category?.id || null,
+          is_active: true,
+          image_url: null,
+          empretienda_product_id: getImportValue(row, 'IDProduct') || null,
+          empretienda_stock_id: getImportValue(row, 'IDStock') || null,
+        }
+      })
+      .filter(
+        (product): product is NonNullable<typeof product> =>
+          Boolean(product)
+      )
+
+    if (!productsToImport.length) {
+      toast.error('No se encontraron productos con nombre para importar')
+      return
+    }
+
+    // Productos ya existentes
+    const existingProductsKeys = new Set(
+      (products || []).map((product) => {
+        const name = product.name?.trim().toLowerCase() || ''
+        const variant = product.variant?.trim().toLowerCase() || ''
+
+        return `${name}::${variant}`
+      })
+    )
+
+    // Filtrar productos que no existan
+    const filteredProducts = productsToImport.filter((product) => {
+      const key = `${product.name.trim().toLowerCase()}::${product.variant?.trim().toLowerCase() || ''}`
+
+      return !existingProductsKeys.has(key)
+    })
+
+    if (!filteredProducts.length) {
+      toast.error('Todos los productos ya existen')
+      return
+    }
+
+    const { error: productsError } = await supabase
+      .from('products')
+      .insert(filteredProducts)
+
+    if (productsError) throw productsError
+
+    toast.success(`${filteredProducts.length} producto${filteredProducts.length !== 1 ? 's' : ''} importado${filteredProducts.length !== 1 ? 's' : ''}`)
+
+    mutate('categories')
+    mutate('all-products')
+    mutate('products')
+  } catch (error) {
+    console.error('Error importing products:', error)
+    toast.error('Error al importar productos')
+  } finally {
+    setIsImporting(false)
   }
+}
 
   const handleCreateProduct = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.stock) {
