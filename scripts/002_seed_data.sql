@@ -11,10 +11,8 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Insert default payment methods
 INSERT INTO payment_methods (name, discount_pct) VALUES 
-  ('Efectivo', 10.00),
-  ('Transferencia', 5.00),
-  ('Tarjeta de Crédito', 0.00),
-  ('Tarjeta de Débito', 0.00),
+  ('Efectivo', 15.00),
+  ('Transferencia', 25.00),
   ('MercadoPago', 0.00)
 ON CONFLICT (name) DO NOTHING;
 
