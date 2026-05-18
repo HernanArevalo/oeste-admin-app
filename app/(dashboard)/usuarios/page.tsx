@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { Product, Category, ProductRowState } from '@/lib/types'
+import { User } from '@/lib/types'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
 import {
   Table,
   TableBody,
@@ -17,223 +25,184 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
-import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'
+  Search,
+  Save,
+  X,
+  Download,
+  AlertCircle,
+} from 'lucide-react'
+
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 const supabase = createClient()
 
-const fetchProducts = async () => {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, category:categories(*)')
-    .order('name')
-  if (error) throw error
-  return data as Product[]
+type UserRowState = User & {
+  isDirty: boolean
+  originalData: User
 }
 
-const fetchCategories = async () => {
-  const { data, error } = await supabase.from('categories').select('*').order('name')
+const roles = [
+  { id: 'admin', name: 'Owner' },
+  { id: 'seller', name: 'Seller' },
+  { id: 'user', name: 'User' },
+]
+
+const fetchUsers = async () => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('name')
+
   if (error) throw error
-  return data as Category[]
+
+  return data as User[]
 }
 
 export default function UsersPage() {
-  const { data: products, isLoading: productsLoading } = useSWR('all-products', fetchProducts)
-  const { data: categories } = useSWR('categories', fetchCategories)
+  const { data: users, isLoading } = useSWR('all-users', fetchUsers)
 
   const [search, setSearch] = useState('')
-  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [roleFilter, setRoleFilter] = useState<string>('all')
   const [showInactive, setShowInactive] = useState(false)
-  const [editedProducts, setEditedProducts] = useState<Map<string, ProductRowState>>(new Map())
-  const [isNewProductOpen, setIsNewProductOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const rowFileInputs = useRef<Record<string, HTMLInputElement | null>>({})
-  const newProductFileInput = useRef<HTMLInputElement | null>(null)
 
-  // New product form state
-  const [newProduct, setNewProduct] = useState({
-    name: '',
-    variant: '',
-    price: '',
-    stock: '',
-    category_id: '',
-    is_active: true,
-    image_url: '',
-  })
-  const [uploadingImage, setUploadingImage] = useState<string | null>(null) // product id or 'new'
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-
-  const filteredProducts = useMemo(() => {
-    if (!products) return []
-    return products.filter((product) => {
-      const matchesSearch =
-        product.name.toLowerCase().includes(search.toLowerCase()) ||
-        product.variant?.toLowerCase().includes(search.toLowerCase())
-      const matchesCategory = categoryFilter === 'all' || product.category_id === categoryFilter
-      const matchesActive = showInactive || product.is_active
-      return matchesSearch && matchesCategory && matchesActive
-    })
-  }, [products, search, categoryFilter, showInactive])
-
-  const hasChanges = editedProducts.size > 0
-
-  const handleImageUpload = async (file: File, productId: string | 'new', productName?: string | null, productVariant?: string | null) => {
-    setUploadingImage(productId)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      if (productName) {
-        formData.append('productName', productName)
-      }
-      if (productVariant) {
-        formData.append('productVariant', productVariant)
-      }
-
-      const response = await fetch('/api/cloudinary', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al subir imagen')
-      }
-
-      const { url } = await response.json()
-
-      if (productId === 'new') {
-        setNewProduct((p) => ({ ...p, image_url: url }))
-        setImagePreview(url)
-      } else {
-        handleFieldChange(productId, 'image_url', url)
-      }
-
-      toast.success('Imagen subida correctamente')
-    } catch (error) {
-      console.error('Error uploading image:', error)
-      toast.error('Error al subir la imagen')
-    } finally {
-      setUploadingImage(null)
-    }
-  }
-
-  const getProductValue = useCallback(
-    (product: Product, field: keyof Product) => {
-      const edited = editedProducts.get(product.id)
-      if (edited && field in edited) {
-        return edited[field as keyof ProductRowState]
-      }
-      return product[field]
-    },
-    [editedProducts]
+  const [editedUsers, setEditedUsers] = useState<Map<string, UserRowState>>(
+    new Map()
   )
 
-  const handleFieldChange = (productId: string, field: keyof Product, value: unknown) => {
-    const product = products?.find((p) => p.id === productId)
-    if (!product) return
+  const [isSaving, setIsSaving] = useState(false)
 
-    setEditedProducts((prev) => {
-      const newMap = new Map(prev)
-      const existing = newMap.get(productId) || { ...product, isDirty: true, originalData: product }
-      newMap.set(productId, { ...existing, [field]: value, isDirty: true })
-      return newMap
+  const filteredUsers = useMemo(() => {
+    if (!users) return []
+
+    return users.filter((user) => {
+      const matchesSearch =
+        user.name.toLowerCase().includes(search.toLowerCase()) ||
+        user.email.toLowerCase().includes(search.toLowerCase())
+
+      const matchesRole =
+        roleFilter === 'all' || user.role === roleFilter
+
+      const matchesActive =
+        showInactive || user.is_active
+
+      return matchesSearch && matchesRole && matchesActive
+    })
+  }, [users, search, roleFilter, showInactive])
+
+  const hasChanges = editedUsers.size > 0
+
+  const getUserValue = useCallback(
+    (user: User, field: keyof User) => {
+      const edited = editedUsers.get(user.id)
+
+      if (edited && field in edited) {
+        return edited[field]
+      }
+
+      return user[field]
+    },
+    [editedUsers]
+  )
+
+  const handleFieldChange = (
+    userId: string,
+    field: keyof User,
+    value: unknown
+  ) => {
+    const user = users?.find((u) => u.id === userId)
+
+    if (!user) return
+
+    setEditedUsers((prev) => {
+      const map = new Map(prev)
+
+      const existing =
+        map.get(userId) || {
+          ...user,
+          isDirty: true,
+          originalData: user,
+        }
+
+      map.set(userId, {
+        ...existing,
+        [field]: value,
+        isDirty: true,
+      })
+
+      return map
     })
   }
 
   const cancelChanges = () => {
-    setEditedProducts(new Map())
+    setEditedUsers(new Map())
   }
 
   const saveChanges = async () => {
     setIsSaving(true)
+
     try {
-      const updates = Array.from(editedProducts.values())
-      for (const product of updates) {
-        const { id, name, variant, price, stock, category_id, is_active, image_url } = product
+      const updates = Array.from(editedUsers.values())
+
+      for (const user of updates) {
+        const { id, role, is_active } = user
+
         const { error } = await supabase
-          .from('products')
-          .update({ name, variant, price, stock, category_id, is_active, image_url })
+          .from('users')
+          .update({
+            role,
+            is_active,
+          })
           .eq('id', id)
+
         if (error) throw error
       }
-      toast.success(`${updates.length} producto(s) actualizado(s)`)
-      setEditedProducts(new Map())
-      mutate('all-products')
-      mutate('products')
+
+      toast.success(`${updates.length} usuario(s) actualizado(s)`)
+
+      setEditedUsers(new Map())
+
+      mutate('all-users')
     } catch (error) {
-      console.error('Error saving products:', error)
+      console.error(error)
       toast.error('Error al guardar cambios')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleCreateProduct = async () => {
-    if (!newProduct.name || !newProduct.price || !newProduct.stock) {
-      toast.error('Completa los campos requeridos')
-      return
-    }
+  const exportToCSV = () => {
+    if (!users?.length) return
 
-    setIsSaving(true)
-    try {
-      const { error } = await supabase.from('products').insert({
-        name: newProduct.name,
-        variant: newProduct.variant || null,
-        price: parseFloat(newProduct.price),
-        stock: parseInt(newProduct.stock),
-        category_id: newProduct.category_id || null,
-        is_active: newProduct.is_active,
-        image_url: newProduct.image_url || null,
-      })
-
-      if (error) throw error
-
-      toast.success('Producto creado')
-      setIsNewProductOpen(false)
-      setNewProduct({ name: '', variant: '', price: '', stock: '', category_id: '', is_active: true, image_url: '' })
-      setImagePreview(null)
-      mutate('all-products')
-      mutate('products')
-    } catch (error) {
-      console.error('Error creating product:', error)
-      toast.error('Error al crear producto')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const exportToExcel = () => {
-    if (!products) return
-    
-    const data = products.map((p) => ({
-      Nombre: p.name,
-      Variante: p.variant || '',
-      Precio: p.price,
-      Stock: p.stock,
-      Categoria: p.category?.name || '',
-      Activo: p.is_active ? 'Si' : 'No',
+    const data = users.map((u) => ({
+      Nombre: u.name,
+      Email: u.email,
+      Rol: u.role,
+      Activo: u.is_active ? 'Sí' : 'No',
     }))
 
-    // Create CSV content
     const headers = Object.keys(data[0]).join(',')
-    const rows = data.map((row) => Object.values(row).join(','))
+
+    const rows = data.map((row) =>
+      Object.values(row).join(',')
+    )
+
     const csv = [headers, ...rows].join('\n')
 
-    // Download
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob([csv], {
+      type: 'text/csv;charset=utf-8;',
+    })
+
     const link = document.createElement('a')
+
     link.href = URL.createObjectURL(blob)
-    link.download = `productos_${new Date().toISOString().split('T')[0]}.csv`
+
+    link.download = `usuarios_${
+      new Date().toISOString().split('T')[0]
+    }.csv`
+
     link.click()
   }
 
@@ -241,169 +210,69 @@ export default function UsersPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">Productos</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
-            <Upload className="h-4 w-4 mr-2" />
-            Importar 
-          </Button>
-          <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-          <Dialog open={isNewProductOpen} onOpenChange={setIsNewProductOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Producto
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo Producto</DialogTitle>
-                <DialogDescription>Completa los datos del nuevo producto</DialogDescription>
-              </DialogHeader>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel>Imagen</FieldLabel>
-                  <button
-                    type="button"
-                    onClick={() => newProductFileInput.current?.click()}
-                    className="group relative h-32 w-32 overflow-hidden rounded-lg border border-dashed border-border bg-muted/40"
-                    disabled={uploadingImage === 'new'}
-                  >
-                    <img
-                      src={imagePreview || newProduct.image_url || '/placeholder.jpg'}
-                      alt="Vista previa"
-                      className="h-full w-full object-cover"
-                    />
-                    <div className="absolute inset-0 hidden items-center justify-center bg-black/50 text-white group-hover:flex">
-                      {uploadingImage === 'new' ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                      ) : (
-                        <Upload className="h-5 w-5" />
-                      )}
-                    </div>
-                  </button>
-                  <input
-                    ref={newProductFileInput}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) {
-                        handleImageUpload(file, 'new')
-                      }
-                      e.target.value = ''
-                    }}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel>Nombre *</FieldLabel>
-                  <Input
-                    value={newProduct.name}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, name: e.target.value }))}
-                    placeholder="Nombre del producto"
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel>Variante</FieldLabel>
-                  <Input
-                    value={newProduct.variant}
-                    onChange={(e) => setNewProduct((p) => ({ ...p, variant: e.target.value }))}
-                    placeholder="Color, talle, etc."
-                  />
-                </Field>
-                <div className="grid grid-cols-2 gap-4">
-                  <Field>
-                    <FieldLabel>Precio *</FieldLabel>
-                    <Input
-                      type="number"
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct((p) => ({ ...p, price: e.target.value }))}
-                      placeholder="0"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel>Stock *</FieldLabel>
-                    <Input
-                      type="number"
-                      value={newProduct.stock}
-                      onChange={(e) => setNewProduct((p) => ({ ...p, stock: e.target.value }))}
-                      placeholder="0"
-                    />
-                  </Field>
-                </div>
-                <Field>
-                  <FieldLabel>Categoria</FieldLabel>
-                  <Select
-                    value={newProduct.category_id}
-                    onValueChange={(v) => setNewProduct((p) => ({ ...p, category_id: v }))}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories?.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-                <Field>
-                  <div className="flex items-center justify-between">
-                    <FieldLabel>Activo</FieldLabel>
-                    <Switch
-                      checked={newProduct.is_active}
-                      onCheckedChange={(v) => setNewProduct((p) => ({ ...p, is_active: v }))}
-                    />
-                  </div>
-                </Field>
-              </FieldGroup>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsNewProductOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button onClick={handleCreateProduct} disabled={isSaving}>
-                  {isSaving ? 'Creando...' : 'Crear Producto'}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <h1 className="text-2xl font-semibold text-foreground">
+          Usuarios
+        </h1>
+
+        <Button
+          variant="outline"
+          onClick={exportToCSV}
+          disabled={!users?.length}
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Exportar
+        </Button>
       </div>
 
-      {/* Filters & Actions */}
+      {/* Filters */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
             <Input
-              placeholder="Buscar productos..."
+              placeholder="Buscar usuarios..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
           </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+
+          <Select
+            value={roleFilter}
+            onValueChange={setRoleFilter}
+          >
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Categoria" />
+              <SelectValue placeholder="Rol" />
             </SelectTrigger>
+
             <SelectContent>
-              <SelectItem value="all">Todas las categorias</SelectItem>
-              {categories?.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
+              <SelectItem value="all">
+                Todos los roles
+              </SelectItem>
+
+              {roles.map((role) => (
+                <SelectItem
+                  key={role.id}
+                  value={role.id}
+                >
+                  {role.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
           <div className="flex items-center gap-2">
-            <Switch checked={showInactive} onCheckedChange={setShowInactive} id="show-inactive" />
-            <label htmlFor="show-inactive" className="text-sm text-muted-foreground cursor-pointer">
+            <Switch
+              checked={showInactive}
+              onCheckedChange={setShowInactive}
+              id="show-inactive"
+            />
+
+            <label
+              htmlFor="show-inactive"
+              className="text-sm text-muted-foreground cursor-pointer"
+            >
               Mostrar inactivos
             </label>
           </div>
@@ -411,16 +280,32 @@ export default function UsersPage() {
 
         {hasChanges && (
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-amber-400 border-amber-400/30">
-              {editedProducts.size} cambios sin guardar
+            <Badge
+              variant="outline"
+              className="text-amber-400 border-amber-400/30"
+            >
+              {editedUsers.size} cambios sin guardar
             </Badge>
-            <Button variant="outline" size="sm" onClick={cancelChanges}>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={cancelChanges}
+            >
               <X className="h-4 w-4 mr-1" />
               Cancelar
             </Button>
-            <Button size="sm" onClick={saveChanges} disabled={isSaving}>
+
+            <Button
+              size="sm"
+              onClick={saveChanges}
+              disabled={isSaving}
+            >
               <Save className="h-4 w-4 mr-1" />
-              {isSaving ? 'Guardando...' : 'Guardar'}
+
+              {isSaving
+                ? 'Guardando...'
+                : 'Guardar'}
             </Button>
           </div>
         )}
@@ -431,127 +316,129 @@ export default function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[90px]">Imagen</TableHead>
-              <TableHead className="w-[250px]">Producto</TableHead>
-              <TableHead>Variante</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead className="text-right">Precio</TableHead>
-              <TableHead className="text-center">Stock</TableHead>
-              <TableHead className="text-center">Activo</TableHead>
+              <TableHead>Usuario</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead className="text-center">
+                Rol
+              </TableHead>
+              <TableHead className="text-right">
+                Activo
+              </TableHead>
             </TableRow>
           </TableHeader>
+
           <TableBody>
-            {productsLoading ? (
+            {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={4}>
                     <div className="h-10 bg-secondary/50 animate-pulse rounded" />
                   </TableCell>
                 </TableRow>
               ))
-            ) : filteredProducts.length === 0 ? (
+            ) : filteredUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                <TableCell
+                  colSpan={4}
+                  className="text-center py-12 text-muted-foreground"
+                >
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  No se encontraron productos
+
+                  No se encontraron usuarios
                 </TableCell>
               </TableRow>
             ) : (
-              filteredProducts.map((product) => {
-                const isEdited = editedProducts.has(product.id)
+              filteredUsers.map((user) => {
+                const isEdited = editedUsers.has(user.id)
+
                 return (
-                  <TableRow key={product.id} className={cn(isEdited && 'bg-amber-500/5')}>
+                  <TableRow
+                    key={user.id}
+                    className={cn(
+                      isEdited && 'bg-amber-500/5'
+                    )}
+                  >
                     <TableCell>
-                      <button
-                        type="button"
-                        onClick={() => rowFileInputs.current[product.id]?.click()}
-                        className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-muted/40"
-                        disabled={uploadingImage === product.id}
-                      >
+                      <div className="flex items-center gap-3">
                         <img
-                          src={(getProductValue(product, 'image_url') as string) || '/placeholder.jpg'}
-                          alt={product.name}
-                          className="h-full w-full object-cover"
-                        />
-                        <div className="absolute inset-0 hidden items-center justify-center bg-black/45 text-white group-hover:flex">
-                          {uploadingImage === product.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <ImageIcon className="h-4 w-4" />
-                          )}
-                        </div>
-                      </button>
-                      <input
-                        ref={(el) => {
-                          rowFileInputs.current[product.id] = el
-                        }}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            handleImageUpload(file, product.id, product.name, product.variant)
+                          src={
+                            (getUserValue(user, 'image_url') as string | null) ||
+                            '/placeholder.jpg'
                           }
-                          e.target.value = ''
-                        }}
-                      />
+                          alt={user.name}
+                          className="h-10 w-10 rounded-full object-cover border"
+                        />
+                        <div>
+                          <div className="font-medium">
+                            {getUserValue(
+                              user,
+                              'name'
+                            )}
+                          </div>
+
+                          <div className="text-xs text-muted-foreground">
+                            id: {user.id.split('-')[0].toUpperCase()}
+                          </div>
+                        </div>
+                      </div>
                     </TableCell>
+
                     <TableCell>
-                      <Input
-                        value={getProductValue(product, 'name') as string}
-                        onChange={(e) => handleFieldChange(product.id, 'name', e.target.value)}
-                        className="h-8 bg-transparent border-transparent hover:border-input focus:border-input"
-                      />
+                      {getUserValue(user, 'email')}
                     </TableCell>
-                    <TableCell>
-                      <Input
-                        value={(getProductValue(product, 'variant') as string) || ''}
-                        onChange={(e) => handleFieldChange(product.id, 'variant', e.target.value)}
-                        className="h-8 bg-transparent border-transparent hover:border-input focus:border-input"
-                        placeholder="-"
-                      />
-                    </TableCell>
-                    <TableCell>
+
+                    <TableCell className="text-center">
                       <Select
-                        value={(getProductValue(product, 'category_id') as string) || 'none'}
-                        onValueChange={(v) => handleFieldChange(product.id, 'category_id', v === 'none' ? null : v)}
+                        value={
+                          (getUserValue(
+                            user,
+                            'role'
+                          ) as string) || 'user'
+                        }
+                        onValueChange={(v) =>
+                          handleFieldChange(
+                            user.id,
+                            'role',
+                            v
+                          )
+                        }
                       >
-                        <SelectTrigger className="h-8 w-40 bg-transparent border-transparent hover:border-input">
-                          <SelectValue placeholder="Sin categoria" />
+                        <SelectTrigger className="h-8 w-40 mx-auto">
+                          <SelectValue />
                         </SelectTrigger>
+
                         <SelectContent>
-                          <SelectItem value="none">Sin categoria</SelectItem>
-                          {categories?.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.id}>
-                              {cat.name}
+                          {roles.map((role) => (
+                            <SelectItem
+                              key={role.id}
+                              value={role.id}
+                            >
+                              {role.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </TableCell>
+
                     <TableCell className="text-right">
-                      <Input
-                        type="number"
-                        value={getProductValue(product, 'price') as number}
-                        onChange={(e) => handleFieldChange(product.id, 'price', parseFloat(e.target.value) || 0)}
-                        className="h-8 w-28 text-right bg-transparent border-transparent hover:border-input focus:border-input ml-auto"
-                      />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Input
-                        min={0}
-                        type="number"
-                        value={getProductValue(product, 'stock') as number}
-                        onChange={(e) => handleFieldChange(product.id, 'stock', parseInt(e.target.value) || 0)}
-                        className="h-8 w-20 text-center bg-transparent border-transparent hover:border-input focus:border-input mx-auto"
-                      />
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={getProductValue(product, 'is_active') as boolean}
-                        onCheckedChange={(v) => handleFieldChange(product.id, 'is_active', v)}
-                      />
+                      <div className="flex justify-end">
+                        <Switch
+                          checked={
+                            getUserValue(
+                              user,
+                              'is_active'
+                            ) as boolean
+                          }
+                          onCheckedChange={(v) =>
+                            handleFieldChange(
+                              user.id,
+                              'is_active',
+                              v
+                            )
+                          }
+                          disabled={true}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -561,12 +448,20 @@ export default function UsersPage() {
         </Table>
       </div>
 
-      {/* Stats */}
-      {!productsLoading && filteredProducts.length > 0 && (
+      {!isLoading && filteredUsers.length > 0 && (
         <div className="text-sm text-muted-foreground">
-          {filteredProducts.length} productos encontrados
+          {filteredUsers.length} usuarios encontrados
         </div>
       )}
+      <p className="text-sm text-muted-foreground m-0">
+        El rol "Owner" tiene acceso total.
+      </p>
+      <p className="text-sm text-muted-foreground m-0">
+        El rol "Seller" puede gestionar productos y ventas.
+      </p>
+      <p className="text-sm text-muted-foreground m-0">
+        El rol "User" es el rol por default, no tiene acceso.
+      </p>
     </div>
   )
 }
