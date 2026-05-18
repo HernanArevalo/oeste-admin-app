@@ -129,10 +129,10 @@ export function SalesTable({ isLoading, sales }: Props) {
                     <TableCell className="text-center">
                       <div className="leading-tight">
                         <p className="font-mono text-xs text-muted-foreground">
-                          {sale.id.slice(0, 8)}...
+                          {sale.id.slice(0, 8)}
                         </p>
-                        <p className="font-mono text-sm text-foreground">
-                          {sale.order_number != null ? `#${sale.order_number}` : "Sin orden"}
+                        <p className="font-mono text-sm text-foreground text-lef">
+                          {sale.order_number != null ? `#${sale.order_number}` : "-"}
                         </p>
                       </div>
                     </TableCell>
