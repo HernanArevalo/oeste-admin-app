@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'OESTE GAFAS | admin',
   description: 'Sistema de gestión de ventas e inventario de Oeste Gafas',
   icons: {
-    icon: '/logo.jpg',
+    icon: '/logo-admin.jpg',
   },
 }
 
