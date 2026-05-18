@@ -155,7 +155,7 @@ export default function NewSalePage() {
 
   const handleSubmit = async () => {
     if (cart.length === 0) return toast.error("El carrito esta vacio");
-    if (!paymentMethodId) return toast.error("Selecciona un metodo de pago");
+    if (!paymentMethodId) return toast.error("Selecciona un método de pago");
     setIsSubmitting(true);
     try {
       const { data: sale, error: saleError } = await supabase
@@ -299,7 +299,7 @@ export default function NewSalePage() {
             </div>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                Metodo de Pago
+                Método de Pago
               </label>
               <Select
                 value={paymentMethodId}
