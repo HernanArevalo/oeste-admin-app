@@ -3,7 +3,7 @@
 
 -- Create enums
 CREATE TYPE channel AS ENUM ('LOCAL', 'WEB', 'OTHER');
-CREATE TYPE sale_status AS ENUM ('PENDING', 'READY_FOR_PICKUP', 'SHIPPED', 'DELIVERED', 'CANCELLED');
+CREATE TYPE sale_status AS ENUM ('PREPARING', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED');
 
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   order_number INTEGER,
   point_of_sale channel NOT NULL DEFAULT 'LOCAL',
-  status sale_status NOT NULL DEFAULT 'PENDING',
+  status sale_status NOT NULL DEFAULT 'PREPARING',
   tracking_sent BOOLEAN DEFAULT false,
   notes TEXT,
   payment_method_id UUID NOT NULL REFERENCES payment_methods(id),

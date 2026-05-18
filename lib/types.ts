@@ -1,7 +1,7 @@
 // Database types for Oeste Gafas
 
 export type Channel = 'LOCAL' | 'WEB' | 'OTHER'
-export type SaleStatus = 'PENDING' | 'READY_FOR_PICKUP' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+export type SaleStatus = 'PREPARING' | 'READY' | 'DELIVERED' | 'CANCELLED'
 
 export interface Category {
   id: string
@@ -57,6 +57,7 @@ export interface Sale {
   receipt_uploaded_at: string | null
   created_at: string
   items?: SaleItem[]
+  is_paid: boolean
 }
 
 export interface SaleItem {
@@ -100,9 +101,8 @@ export interface ProductRowState extends Product {
 
 // Status labels in Spanish
 export const statusLabels: Record<SaleStatus, string> = {
-  PENDING: 'Pendiente',
-  READY_FOR_PICKUP: 'Listo para Retirar',
-  SHIPPED: 'Enviado',
+  PREPARING: 'Preparando',
+  READY: 'Listo',
   DELIVERED: 'Entregado',
   CANCELLED: 'Cancelado',
 }
@@ -114,9 +114,8 @@ export const channelLabels: Record<Channel, string> = {
 }
 
 export const statusColors: Record<SaleStatus, string> = {
-  PENDING: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  READY_FOR_PICKUP: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  SHIPPED: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  PREPARING: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  READY: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   DELIVERED: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
   CANCELLED: 'bg-red-500/20 text-red-400 border-red-500/30',
 }
