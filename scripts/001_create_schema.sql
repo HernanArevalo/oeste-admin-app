@@ -34,6 +34,18 @@ CREATE TABLE IF NOT EXISTS products (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Users table
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  role TEXT NOT NULL DEFAULT 'user',
+  image_url TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Sales table
 CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,6 +55,8 @@ CREATE TABLE IF NOT EXISTS sales (
   tracking_sent BOOLEAN DEFAULT false,
   notes TEXT,
   payment_method_id UUID NOT NULL REFERENCES payment_methods(id),
+  seller_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  seller_name TEXT,
   subtotal DECIMAL(10,2) NOT NULL,
   discount DECIMAL(10,2) DEFAULT 0,
   total DECIMAL(10,2) NOT NULL,
@@ -81,5 +95,12 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_products_updated_at ON products;
 CREATE TRIGGER update_products_updated_at
   BEFORE UPDATE ON products
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- Create trigger for users updated_at
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at
+  BEFORE UPDATE ON users
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
