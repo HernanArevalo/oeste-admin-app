@@ -30,6 +30,17 @@ export interface Product {
   updated_at: string
 }
 
+export interface User {
+  id: string
+  name: string
+  email: string
+  role: string
+  created_at: string
+  updated_at: string
+  image_url: string | null
+  is_active: boolean
+}
+
 export interface Sale {
   id: string
   order_number: number | null
