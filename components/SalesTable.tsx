@@ -54,7 +54,7 @@ export function SalesTable({ isLoading, sales }: Props) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-12 text-center"></TableHead>
-            <TableHead className="w-32 text-center">Fecha</TableHead>
+            <TableHead className="w-32 text-left">Fecha</TableHead>
             <TableHead className="w-36 text-center">ID</TableHead>
             <TableHead className="w-28 text-center">Canal</TableHead>
             <TableHead className="w-40 text-center">Método de Pago</TableHead>
@@ -118,7 +118,7 @@ export function SalesTable({ isLoading, sales }: Props) {
                         />
                       </button>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-left">
                       <div className="leading-tight">
                         <p>{dateFormatter.format(saleDate)}</p>
                         <p className="text-xs text-muted-foreground">
@@ -131,7 +131,7 @@ export function SalesTable({ isLoading, sales }: Props) {
                         <p className="font-mono text-xs text-muted-foreground">
                           {sale.id.slice(0, 8)}
                         </p>
-                        <p className="font-mono text-sm text-foreground text-lef">
+                        <p className="font-mono text-sm text-foreground font-bold">
                           {sale.order_number != null ? `#${sale.order_number}` : "-"}
                         </p>
                       </div>
@@ -142,9 +142,17 @@ export function SalesTable({ isLoading, sales }: Props) {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="truncate" title={sale.payment_method?.name ?? "-"}>
+                      <Badge className={
+                                      cn(
+                                        "border", 
+                                        sale.is_paid?
+                                        "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                        :
+                                        "bg-amber-500/20 text-amber-400 border-amber-500/30", 
+                                          "truncate"
+                                        )} title={sale.payment_method?.name ?? "-"}>
                         {sale.payment_method?.name ?? "-"}
-                      </div>
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-center">
                       <Badge

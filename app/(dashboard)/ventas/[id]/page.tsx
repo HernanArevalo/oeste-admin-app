@@ -27,10 +27,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Calendar, CreditCard, MapPin, MessageSquare, Package, Send, Image, ExternalLink, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Calendar, CreditCard, MapPin, MessageSquare, Package, Send, Image, ExternalLink, Copy, Check, Receipt, Globe, Store } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/utils'
+import { Switch } from '@/components/ui/switch'
 
 const supabase = createClient()
 
@@ -72,6 +73,12 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     }).format(new Date(date))
   }
 
+  const pointOfSaleIcons = {
+    WEB: Globe,
+    LOCAL: Store,
+    OTHER: MapPin,
+  }
+
   const handleStatusChange = async (newStatus: SaleStatus) => {
     setIsUpdatingStatus(true)
     try {
@@ -91,12 +98,31 @@ export default function SaleDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  const handlePayedChange = async (newStatus: boolean) => {
+    setIsUpdatingStatus(true)
+    try {
+      const { error } = await supabase
+        .from('sales')
+        .update({ is_paid: newStatus })
+        .eq('id', id)
+
+      if (error) throw error
+      toast.success('Estado actualizado')
+      mutate(id)
+    } catch (err) {
+      console.error('Error updating status:', err)
+      toast.error('Error al actualizar estado')
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
+
   const generateWhatsAppMessage = () => {
     if (!sale) return ''
-    const items = sale.items?.map(item => 
+    const items = sale.items?.map(item =>
       `- ${item.quantity}x ${item.product?.name}${item.product?.variant ? ` (${item.product.variant})` : ''}`
     ).join('\n')
-    
+
     return `Hola! Tu pedido de Oeste Gafas esta listo.
 
 Detalle:
@@ -225,7 +251,20 @@ Gracias por tu compra!`
               <TableBody>
                 {sale.items?.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
+                    <TableCell className='flex flex-row gap-2 items-center'>
+                      <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted/40">
+                        <img
+                          src={
+                            item.product?.image_url ||
+                            "/placeholder.jpg"
+                          }
+                          alt={
+                            item.product?.name ??
+                            "Producto sin nombre"
+                          }
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                       <div>
                         <p className="font-medium">{item.product?.name}</p>
                         {item.product?.variant && (
@@ -264,8 +303,8 @@ Gracias por tu compra!`
         {/* Details Sidebar */}
         <div className="space-y-6">
           {/* Status */}
-          <Card>
-            <CardHeader className="pb-3">
+          <Card className='gap-2'>
+            <CardHeader className="">
               <CardTitle className="text-sm font-medium text-muted-foreground">Estado</CardTitle>
             </CardHeader>
             <CardContent>
@@ -274,7 +313,7 @@ Gracias por tu compra!`
                 onValueChange={(v) => handleStatusChange(v as SaleStatus)}
                 disabled={isUpdatingStatus}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full cursor-pointer">
                   <SelectValue>
                     <Badge className={cn('border', statusColors[sale.status])}>
                       {statusLabels[sale.status]}
@@ -319,6 +358,20 @@ Gracias por tu compra!`
                 <div>
                   <p className="text-sm text-muted-foreground">Metodo de Pago</p>
                   <p className="font-medium">{sale.payment_method?.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Receipt className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Pagado</p>
+                  <Switch checked={sale.is_paid}
+                    className={cn(
+                      'ml-2 cursor-pointer',
+                      sale.is_paid &&
+                        'data-[state=checked]:bg-green-500/70'
+                      )}
+                    onCheckedChange={(v) => handlePayedChange(v)}
+                  />
                 </div>
               </div>
               {sale.notes && (
