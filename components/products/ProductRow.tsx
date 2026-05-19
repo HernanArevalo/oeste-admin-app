@@ -20,6 +20,8 @@ type Props = {
   isUploading: boolean;
   onChange: (id: string, field: keyof Product, value: unknown) => void;
   onPickImage: (product: Product) => void;
+  onImageSelected: (product: Product, file: File) => void;
+  setFileInputRef: (productId: string, element: HTMLInputElement | null) => void;
 };
 
 function Row({
@@ -29,6 +31,8 @@ function Row({
   isUploading,
   onChange,
   onPickImage,
+  onImageSelected,
+  setFileInputRef,
 }: Props) {
   const current = { ...product, ...edited };
   const [name, setName] = useState(current.name);
@@ -41,6 +45,17 @@ function Row({
   return (
     <TableRow className={cn(edited && "bg-amber-500/5")}>
       <TableCell>
+        <input
+          ref={(el) => setFileInputRef(product.id, el)}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onImageSelected(product, file);
+            e.currentTarget.value = "";
+          }}
+        />
         <ProductImageUpload
           src={current.image_url || undefined}
           alt={product.name}
