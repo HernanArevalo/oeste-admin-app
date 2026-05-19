@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const timestamp = Math.round(new Date().getTime() / 1000)
     const folder = 'oeste-admin-app/productos' + (productName ? `/${productName}` : '') + (productVariant ? `/${productVariant}` : '')
-    
+
     // Create signature
     const signatureString = `folder=${folder}&timestamp=${timestamp}${apiSecret}`
     const encoder = new TextEncoder()
@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
     cloudinaryFormData.append('timestamp', timestamp.toString())
     cloudinaryFormData.append('signature', signature)
     cloudinaryFormData.append('folder', folder)
+    cloudinaryFormData.append(
+      'transformation',
+      'w_400,c_limit,q_auto:eco,f_auto'
+    )
 
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -60,10 +64,10 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await response.json()
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       url: result.secure_url,
-      public_id: result.public_id 
+      public_id: result.public_id
     })
   } catch (error) {
     console.error('Upload error:', error)

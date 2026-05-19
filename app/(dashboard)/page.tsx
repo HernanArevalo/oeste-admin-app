@@ -35,7 +35,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/utils";
+import { formatPrice, getOptimizedCloudinaryImage } from "@/utils";
+import Image from "next/image";
 
 const supabase = createClient();
 
@@ -444,8 +445,10 @@ export default function NewSalePage() {
                       </Badge>
                     )}
                     <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
-                      <img
-                        src={product.image_url || "/placeholder.jpg"}
+                      <Image
+                        width={360}
+                        height={360}
+                        src={product.image_url && getOptimizedCloudinaryImage(product.image_url, 360) || "/placeholder.jpg"}
                         alt={product.name}
                         className="h-full w-full object-cover"
                       />

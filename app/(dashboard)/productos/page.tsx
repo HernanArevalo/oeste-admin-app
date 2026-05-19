@@ -32,7 +32,8 @@ import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { capitalize } from '@/utils'
+import { capitalize, getOptimizedCloudinaryImage } from '@/utils'
+import Image from 'next/image'
 
 const supabase = createClient()
 const PRODUCTS_PAGE_SIZE = 50
@@ -566,8 +567,10 @@ export default function ProductsPage() {
                     className="group relative h-32 w-32 overflow-hidden rounded-lg border border-dashed border-border bg-muted/40"
                     disabled={uploadingImage === 'new'}
                   >
-                    <img
-                      src={imagePreview || newProduct.image_url || '/placeholder.jpg'}
+                    <Image
+                      width={54}
+                      height={54}
+                      src={imagePreview || (newProduct.image_url && getOptimizedCloudinaryImage(newProduct.image_url, 54)) || "/placeholder.jpg"}
                       alt="Vista previa"
                       className="h-full w-full object-cover"
                     />
@@ -762,8 +765,10 @@ export default function ProductsPage() {
                         className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-muted/40"
                         disabled={uploadingImage === product.id}
                       >
-                        <img
-                          src={(getProductValue(product, 'image_url') as string) || '/placeholder.jpg'}
+                        <Image
+                          width={54}
+                          height={54}
+                          src={getProductValue(product, 'image_url') && getOptimizedCloudinaryImage(getProductValue(product, 'image_url') as string, 54) || '/placeholder.jpg'}
                           alt={product.name}
                           className="h-full w-full object-cover"
                         />
