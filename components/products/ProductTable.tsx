@@ -20,6 +20,8 @@ type Props = {
   uploadingImage: string | null;
   onChange: (id: string, field: keyof Product, value: unknown) => void;
   onPickImage: (product: Product) => void;
+  onImageSelected: (product: Product, file: File) => void;
+  setFileInputRef: (productId: string, element: HTMLInputElement | null) => void;
 };
 
 function TableComp({
@@ -29,6 +31,8 @@ function TableComp({
   uploadingImage,
   onChange,
   onPickImage,
+  onImageSelected,
+  setFileInputRef,
 }: Props) {
   const [scrollTop, setScrollTop] = useState(0);
   const viewportHeight = 640;
@@ -76,6 +80,8 @@ function TableComp({
               isUploading={uploadingImage === product.id}
               onChange={onChange}
               onPickImage={onPickImage}
+              onImageSelected={onImageSelected}
+              setFileInputRef={setFileInputRef}
             />
           ))}
           <TableRow>
