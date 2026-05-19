@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     cloudinaryFormData.append('folder', folder)
     cloudinaryFormData.append(
       'transformation',
-      'w_400,c_limit,q_auto:eco,f_auto'
+      'w_400,c_limit,q_auto:low,f_auto'
     )
 
     const response = await fetch(

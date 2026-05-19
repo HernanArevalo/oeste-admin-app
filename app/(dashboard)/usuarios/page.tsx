@@ -37,6 +37,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
+import { getProductTableImage } from '@/utils'
 
 const supabase = createClient()
 
@@ -365,7 +366,7 @@ export default function UsersPage() {
                           width={40}
                           height={40}
                           src={
-                            (getUserValue(user, 'image_url') as string | null) ||
+                            getUserValue(user, 'image_url') && getProductTableImage(getUserValue(user, 'image_url') as string) ||
                             '/placeholder.jpg'
                           }
                           alt={user.name}

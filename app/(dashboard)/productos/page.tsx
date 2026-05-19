@@ -55,7 +55,9 @@ export default function ProductsPage() {
     }
   }
 
-  const onPickImage = (product: Product) => rowFileInputs.current[product.id]?.click()
+  const onPickImage = (product: Product) => {
+    rowFileInputs.current[product.id]?.click()
+  }
 
   return <div className='space-y-6'>
     <div className='flex items-center justify-between'>
@@ -65,7 +67,7 @@ export default function ProductsPage() {
 
     <ProductFilters search={search} onSearch={setSearch} categoryFilter={categoryFilter} onCategoryFilter={setCategoryFilter} showInactive={showInactive} onShowInactive={setShowInactive} categories={categories} />
 
-    {hasChanges && <div className='flex items-center gap-2'>
+    {hasChanges && <div className='flex items-center gap-2 w-fit'>
       <Badge variant='outline'>{editedProducts.size} cambios sin guardar</Badge>
       <Button variant='outline' size='sm' onClick={cancelChanges}><X className='h-4 w-4 mr-1' />Cancelar</Button>
       <Button size='sm' onClick={saveChanges} disabled={isSaving}><Save className='h-4 w-4 mr-1' />{isSaving ? 'Guardando...' : 'Guardar'}</Button>

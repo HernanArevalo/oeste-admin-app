@@ -30,7 +30,7 @@ import {
 import { ArrowLeft, Calendar, CreditCard, MapPin, MessageSquare, Package, Send, Image as ImageIcon, ExternalLink, Copy, Check, Receipt, Globe, Store } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { formatPrice } from '@/utils'
+import { formatPrice, getProductTableImage } from '@/utils'
 import { Switch } from '@/components/ui/switch'
 import Image from 'next/image'
 
@@ -258,7 +258,7 @@ Gracias por tu compra!`
                           width={40}
                           height={40}
                           src={
-                            item.product?.image_url ||
+                             item.product?.image_url && getProductTableImage(item.product?.image_url) ||
                             "/placeholder.jpg"
                           }
                           alt={

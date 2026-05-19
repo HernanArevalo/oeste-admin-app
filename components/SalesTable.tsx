@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
-import { formatPrice } from "@/utils";
+import { formatPrice, getProductTableImage } from "@/utils";
 import { Sale, statusLabels, channelLabels, statusColors } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -202,7 +202,7 @@ export function SalesTable({ isLoading, sales }: Props) {
                                             width={40}
                                             height={40}
                                             src={
-                                              item.product?.image_url ||
+                                              item.product?.image_url && getProductTableImage(item.product?.image_url) ||
                                               "/placeholder.jpg"
                                             }
                                             alt={
