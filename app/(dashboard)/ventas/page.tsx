@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import useSWR from 'swr'
+import useSWRInfinite from 'swr/infinite'
 import { createClient } from '@/lib/supabase/client'
 import { Sale, SaleStatus, Channel, statusLabels, channelLabels } from '@/lib/types'
 import { Button } from '@/components/ui/button'
@@ -13,34 +13,81 @@ import { Search, Filter, PlusCircle } from 'lucide-react'
 import { formatPrice } from '@/utils'
 
 const supabase = createClient()
+const SALES_PAGE_SIZE = 10
 
-const fetcher = async () => {
-  const { data, error } = await supabase
+type SalesPageKey = ['sales-page', number, string, SaleStatus | 'all', Channel | 'all']
+type SalesPageResponse = {
+  sales: Sale[]
+  count: number
+}
+
+const fetchSalesPage = async ([, pageIndex, search, statusFilter, channelFilter]: SalesPageKey): Promise<SalesPageResponse> => {
+  const from = pageIndex * SALES_PAGE_SIZE
+  const to = from + SALES_PAGE_SIZE - 1
+  const searchTerm = search.trim()
+
+  let query = supabase
     .from('sales')
-    .select('*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))')
+    .select('*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(from, to)
+
+  if (searchTerm) {
+    query = query.or(`id.ilike.%${searchTerm}%,order_number::text.ilike.%${searchTerm}%`)
+  }
+
+  if (statusFilter !== 'all') {
+    query = query.eq('status', statusFilter)
+  }
+
+  if (channelFilter !== 'all') {
+    query = query.eq('point_of_sale', channelFilter)
+  }
+
+  const { data, error, count } = await query
   if (error) throw error
-  return data as Sale[]
+  return { sales: data as Sale[], count: count || 0 }
 }
 
 export default function SalesPage() {
-  const { data: sales, isLoading } = useSWR('sales', fetcher)
-
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<SaleStatus | 'all'>('all')
   const [channelFilter, setChannelFilter] = useState<Channel | 'all'>('all')
+  const loadMoreSalesRef = useRef<HTMLDivElement | null>(null)
+  const {
+    data: salesPages,
+    isLoading,
+    isValidating,
+    size: salesPageSize,
+    setSize: setSalesPageSize,
+  } = useSWRInfinite<SalesPageResponse>(
+    (pageIndex, previousPageData) => {
+      if (previousPageData && previousPageData.sales.length === 0) return null
+      return ['sales-page', pageIndex, search, statusFilter, channelFilter] as SalesPageKey
+    },
+    fetchSalesPage
+  )
 
-  const filteredSales = useMemo(() => {
-    if (!sales) return []
-    return sales.filter((sale) => {
-      const matchesSearch = 
-        sale.id.toLowerCase().includes(search.toLowerCase()) ||
-        sale.order_number?.toString().includes(search)
-      const matchesStatus = statusFilter === 'all' || sale.status === statusFilter
-      const matchesChannel = channelFilter === 'all' || sale.point_of_sale === channelFilter
-      return matchesSearch && matchesStatus && matchesChannel
-    })
-  }, [sales, search, statusFilter, channelFilter])
+  const filteredSales = useMemo(() => salesPages?.flatMap((page) => page.sales) || [], [salesPages])
+  const totalSales = salesPages?.[0]?.count || 0
+  const hasMoreSales = filteredSales.length < totalSales
+  const isLoadingMoreSales = isValidating && salesPageSize > 0
+
+  useEffect(() => {
+    const loadMoreElement = loadMoreSalesRef.current
+    if (!loadMoreElement || !hasMoreSales || isLoading || isLoadingMoreSales) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setSalesPageSize((currentSize) => currentSize + 1)
+        }
+      },
+      { rootMargin: '300px' }
+    )
+    observer.observe(loadMoreElement)
+    return () => observer.disconnect()
+  }, [hasMoreSales, isLoading, isLoadingMoreSales, setSalesPageSize])
 
   return (
     <div className="space-y-6">
@@ -100,11 +147,24 @@ export default function SalesPage() {
 
       {/* Stats */}
       {!isLoading && filteredSales.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>{filteredSales.length} ventas encontradas</span>
+        <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>Mostrando {filteredSales.length} de {totalSales} ventas encontradas</span>
           <span>
             Total: {formatPrice(filteredSales.reduce((sum, sale) => sum + sale.total, 0))}
           </span>
+        </div>
+      )}
+      {hasMoreSales && (
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSalesPageSize((currentSize) => currentSize + 1)}
+            disabled={isLoadingMoreSales}
+          >
+            {isLoadingMoreSales ? 'Cargando...' : 'Cargar más ventas'}
+          </Button>
+          <div ref={loadMoreSalesRef} className="h-1" aria-hidden="true" />
         </div>
       )}
     </div>

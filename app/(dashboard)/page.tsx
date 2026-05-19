@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import useSWR, { mutate } from "swr";
+import useSWRInfinite from "swr/infinite";
 import { createClient } from "@/lib/supabase/client";
 import {
   Product,
@@ -38,17 +39,38 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/utils";
 
 const supabase = createClient();
+const PRODUCTS_PAGE_SIZE = 10
 
-const fetchProducts = async (): Promise<Product[]> => {
-  const { data, error } = await supabase
+type ProductsPageKey = ["new-sale-products", number, string]
+type ProductsPageResponse = {
+  products: Product[]
+  count: number
+}
+
+const fetchProductsPage = async ([, pageIndex, search]: ProductsPageKey): Promise<ProductsPageResponse> => {
+  const from = pageIndex * PRODUCTS_PAGE_SIZE
+  const to = from + PRODUCTS_PAGE_SIZE - 1
+  const searchTerm = search.trim().replace(/[%,]/g, "")
+
+  let query = supabase
     .from("products")
-    .select("*, category:categories(*)")
+    .select("*, category:categories(*)", { count: "exact" })
     .eq("is_active", true)
     .gt("stock", 0)
-    .order("name");
+    .order("name", { ascending: true })
+    .order("variant", { ascending: true })
+    .range(from, to)
 
+  if (searchTerm) {
+    query = query.or(`name.ilike.%${searchTerm}%,variant.ilike.%${searchTerm}%`)
+  }
+
+  const { data, error, count } = await query
   if (error) throw error;
-  return data;
+  return {
+    products: data as Product[],
+    count: count || 0,
+  }
 };
 
 const fetchPaymentMethods = async (): Promise<PaymentMethod[]> => {
@@ -62,16 +84,26 @@ const fetchPaymentMethods = async (): Promise<PaymentMethod[]> => {
 };
 
 export default function NewSalePage() {
-  const { data: products, isLoading: productsLoading } = useSWR<Product[]>(
-    "products",
-    fetchProducts,
-  );
+  const [search, setSearch] = useState("");
+  const {
+    data: productsPages,
+    isLoading: productsLoading,
+    isValidating: productsValidating,
+    size: productsPageSize,
+    setSize: setProductsPageSize,
+  } = useSWRInfinite<ProductsPageResponse>(
+    (pageIndex, previousPageData) => {
+      if (previousPageData && previousPageData.products.length === 0) return null
+      return ["new-sale-products", pageIndex, search] as ProductsPageKey
+    },
+    fetchProductsPage
+  )
   const { data: paymentMethods } = useSWR<PaymentMethod[]>(
     "payment_methods",
     fetchPaymentMethods,
   );
 
-  const [search, setSearch] = useState("");
+  const loadMoreProductsRef = useRef<HTMLDivElement | null>(null)
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethodId, setPaymentMethodId] = useState<string>("");
   const [pointOfSale, setPointOfSale] = useState<Channel>("LOCAL");
@@ -85,17 +117,30 @@ export default function NewSalePage() {
     }
   }, [paymentMethods, paymentMethodId]);
 
-  const filteredProducts = useMemo(() => {
-    if (!products) return [];
-    if (!search.trim()) return products;
-    const searchLower = search.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(searchLower) ||
-        p.variant?.toLowerCase().includes(searchLower) ||
-        p.category?.name.toLowerCase().includes(searchLower),
-    );
-  }, [products, search]);
+  const filteredProducts = useMemo(
+    () => productsPages?.flatMap((page) => page.products) || [],
+    [productsPages]
+  )
+  const totalProducts = productsPages?.[0]?.count || 0
+  const hasMoreProducts = filteredProducts.length < totalProducts
+  const isLoadingMoreProducts = productsValidating && productsPageSize > 0
+
+  useEffect(() => {
+    const loadMoreElement = loadMoreProductsRef.current
+    if (!loadMoreElement || !hasMoreProducts || productsLoading || isLoadingMoreProducts) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setProductsPageSize((currentSize) => currentSize + 1)
+        }
+      },
+      { rootMargin: "300px" }
+    )
+
+    observer.observe(loadMoreElement)
+    return () => observer.disconnect()
+  }, [hasMoreProducts, isLoadingMoreProducts, productsLoading, setProductsPageSize])
 
   const selectedPaymentMethod = paymentMethods?.find(
     (pm) => pm.id === paymentMethodId,
@@ -196,6 +241,7 @@ export default function NewSalePage() {
         style: { color: "green" }   });
       clearCart();
       mutate("products");
+      mutate("new-sale-products");
       setIsCartOpen(false);
     } catch (error) {
       console.error("Error creating sale:", error);
@@ -423,55 +469,74 @@ export default function NewSalePage() {
               <p>No se encontraron productos</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-              {filteredProducts.map((product) => {
-                const inCart = cart.find(
-                  (item) => item.product.id === product.id,
-                );
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => addToCart(product)}
-                    className={cn(
-                      "relative p-4 rounded-lg border text-left transition-all",
-                      "bg-card hover:bg-accent/90 hover:border-foreground/20",
-                      inCart && "ring-2 ring-primary",
-                    )}
-                  >
-                    {inCart && (
-                      <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center">
-                        {inCart.quantity}
-                      </Badge>
-                    )}
-                    <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
-                      <img
-                        src={product.image_url || "/placeholder.jpg"}
-                        alt={product.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-medium text-foreground line-clamp-1">
-                        {product.name}
-                      </p>
-                      {product.variant && (
-                        <p className="text-gray-400 text-xs">
-                          {product.variant}
-                        </p>
+            <>
+              <div className="mb-3 text-sm text-muted-foreground">
+                Mostrando {filteredProducts.length} de {totalProducts} productos
+              </div>
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredProducts.map((product) => {
+                  const inCart = cart.find(
+                    (item) => item.product.id === product.id,
+                  );
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      className={cn(
+                        "relative p-4 rounded-lg border text-left transition-all",
+                        "bg-card hover:bg-accent/90 hover:border-foreground/20",
+                        inCart && "ring-2 ring-primary",
                       )}
-                      <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
-                        <span className="text-lg font-semibold text-foreground">
-                          {formatPrice(product.price)}
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          Stock: {product.stock}
+                    >
+                      {inCart && (
+                        <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center">
+                          {inCart.quantity}
                         </Badge>
+                      )}
+                      <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
+                        <img
+                          src={product.image_url || "/placeholder.jpg"}
+                          alt={product.name}
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                      <div className="space-y-1">
+                        <p className="font-medium text-foreground line-clamp-1">
+                          {product.name}
+                        </p>
+                        {product.variant && (
+                          <p className="text-gray-400 text-xs">
+                            {product.variant}
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between pt-2 flex-wrap gap-2">
+                          <span className="text-lg font-semibold text-foreground">
+                            {formatPrice(product.price)}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            Stock: {product.stock}
+                          </Badge>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {hasMoreProducts && (
+                <>
+                  <div className="mt-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => setProductsPageSize((currentSize) => currentSize + 1)}
+                      disabled={isLoadingMoreProducts}
+                    >
+                      {isLoadingMoreProducts ? "Cargando..." : "Cargar más productos"}
+                    </Button>
+                  </div>
+                  <div ref={loadMoreProductsRef} className="h-1" aria-hidden="true" />
+                </>
+              )}
+            </>
           )}
         </div>
       </div>
