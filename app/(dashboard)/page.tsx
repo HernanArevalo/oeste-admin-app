@@ -36,7 +36,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatPrice } from "@/utils";
+import { formatPrice, getOptimizedCloudinaryImage } from "@/utils";
+import Image from "next/image";
 
 const supabase = createClient();
 const PRODUCTS_PAGE_SIZE = 10
@@ -469,23 +470,43 @@ export default function NewSalePage() {
               <p>No se encontraron productos</p>
             </div>
           ) : (
-            <>
-              <div className="mb-3 text-sm text-muted-foreground">
-                Mostrando {filteredProducts.length} de {totalProducts} productos
-              </div>
-              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-                {filteredProducts.map((product) => {
-                  const inCart = cart.find(
-                    (item) => item.product.id === product.id,
-                  );
-                  return (
-                    <button
-                      key={product.id}
-                      onClick={() => addToCart(product)}
-                      className={cn(
-                        "relative p-4 rounded-lg border text-left transition-all",
-                        "bg-card hover:bg-accent/90 hover:border-foreground/20",
-                        inCart && "ring-2 ring-primary",
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+              {filteredProducts.map((product) => {
+                const inCart = cart.find(
+                  (item) => item.product.id === product.id,
+                );
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className={cn(
+                      "relative p-4 rounded-lg border text-left transition-all",
+                      "bg-card hover:bg-accent/90 hover:border-foreground/20",
+                      inCart && "ring-2 ring-primary",
+                    )}
+                  >
+                    {inCart && (
+                      <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center">
+                        {inCart.quantity}
+                      </Badge>
+                    )}
+                    <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
+                      <Image
+                        width={360}
+                        height={360}
+                        src={product.image_url && getOptimizedCloudinaryImage(product.image_url, 360) || "/placeholder.jpg"}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-foreground line-clamp-1">
+                        {product.name}
+                      </p>
+                      {product.variant && (
+                        <p className="text-gray-400 text-xs">
+                          {product.variant}
+                        </p>
                       )}
                     >
                       {inCart && (

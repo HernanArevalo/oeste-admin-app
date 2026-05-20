@@ -15,6 +15,7 @@ import { ChevronRight } from "lucide-react";
 import { formatPrice } from "@/utils";
 import { Sale, statusLabels, channelLabels, statusColors } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface Props {
   sales: Sale[];
@@ -197,7 +198,9 @@ export function SalesTable({ isLoading, sales }: Props) {
                                     <td className="px-4 py-3 align-middle">
                                       <div className="flex min-w-0 items-center gap-3">
                                         <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted/40">
-                                          <img
+                                          <Image
+                                            width={40}
+                                            height={40}
                                             src={
                                               item.product?.image_url ||
                                               "/placeholder.jpg"

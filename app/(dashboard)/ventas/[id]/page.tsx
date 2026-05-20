@@ -27,11 +27,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Calendar, CreditCard, MapPin, MessageSquare, Package, Send, Image, ExternalLink, Copy, Check, Receipt, Globe, Store } from 'lucide-react'
+import { ArrowLeft, Calendar, CreditCard, MapPin, MessageSquare, Package, Send, Image as ImageIcon, ExternalLink, Copy, Check, Receipt, Globe, Store } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { formatPrice } from '@/utils'
 import { Switch } from '@/components/ui/switch'
+import Image from 'next/image'
 
 const supabase = createClient()
 
@@ -253,7 +254,9 @@ Gracias por tu compra!`
                   <TableRow key={item.id}>
                     <TableCell className='flex flex-row gap-2 items-center'>
                       <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border border-border bg-muted/40">
-                        <img
+                        <Image
+                          width={40}
+                          height={40}
                           src={
                             item.product?.image_url ||
                             "/placeholder.jpg"
@@ -390,7 +393,7 @@ Gracias por tu compra!`
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <Image className="h-4 w-4" />
+                <ImageIcon className="h-4 w-4" />
                 Comprobante
               </CardTitle>
             </CardHeader>
@@ -403,10 +406,12 @@ Gracias por tu compra!`
                     rel="noopener noreferrer"
                     className="block rounded-lg overflow-hidden border border-border hover:border-foreground/20 transition-colors"
                   >
-                    <img
+                    <Image
                       src={sale.receipt_image_url}
                       alt="Comprobante"
                       className="w-full h-auto"
+                      width={400}
+                      height={300}
                     />
                   </a>
                   <p className="text-xs text-muted-foreground">
@@ -415,7 +420,7 @@ Gracias por tu compra!`
                 </div>
               ) : (
                 <div className="text-center py-6 text-muted-foreground">
-                  <Image className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">Sin comprobante</p>
                   <Button
                     variant="link"
