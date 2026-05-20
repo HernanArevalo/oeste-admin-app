@@ -470,7 +470,7 @@ export default function NewSalePage() {
               <p>No se encontraron productos</p>
             </div>
           ) : (
-ug            <>
+            <>
             <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
               {filteredProducts.map((product) => {
                 const inCart = cart.find(
