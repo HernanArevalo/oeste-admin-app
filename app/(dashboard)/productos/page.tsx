@@ -898,8 +898,7 @@ export default function ProductsPage() {
               {isSaving ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
-        )}
-      </div>
+          )}
 
       {/* Table */}
       <div className="rounded-lg border border-border bg-card">
@@ -1058,7 +1057,6 @@ export default function ProductsPage() {
         </div>
       )}
       {hasMoreProducts && <div ref={loadMoreRef} className="h-1" aria-hidden="true" />}
-    </div>
     </>
   )
 }
