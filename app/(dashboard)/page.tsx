@@ -30,7 +30,7 @@ import {
   Minus,
   Trash2,
   ShoppingCart,
-  Check,
+  Check as CheckIcon,
   AlertCircle,
   MessageCircleMore,
 } from "lucide-react";
@@ -38,40 +38,46 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatPrice, getOptimizedCloudinaryImage } from "@/utils";
 import Image from "next/image";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const supabase = createClient();
-const PRODUCTS_PAGE_SIZE = 10
+const PRODUCTS_PAGE_SIZE = 10;
 
-type ProductsPageKey = ["new-sale-products", number, string]
+type ProductsPageKey = ["new-sale-products", number, string];
 type ProductsPageResponse = {
-  products: Product[]
-  count: number
-}
+  products: Product[];
+  count: number;
+};
 
-const fetchProductsPage = async ([, pageIndex, search]: ProductsPageKey): Promise<ProductsPageResponse> => {
-  const from = pageIndex * PRODUCTS_PAGE_SIZE
-  const to = from + PRODUCTS_PAGE_SIZE - 1
-  const searchTerm = search.trim().replace(/[%,]/g, "")
+const fetchProductsPage = async ([
+  ,
+  pageIndex,
+  search,
+]: ProductsPageKey): Promise<ProductsPageResponse> => {
+  const from = pageIndex * PRODUCTS_PAGE_SIZE;
+  const to = from + PRODUCTS_PAGE_SIZE - 1;
+  const searchTerm = search.trim().replace(/[%,]/g, "");
 
   let query = supabase
     .from("products")
     .select("*, category:categories(*)", { count: "exact" })
     .eq("is_active", true)
-    .gt("stock", 0)
     .order("name", { ascending: true })
     .order("variant", { ascending: true })
-    .range(from, to)
+    .range(from, to);
 
   if (searchTerm) {
-    query = query.or(`name.ilike.%${searchTerm}%,variant.ilike.%${searchTerm}%`)
+    query = query.or(
+      `name.ilike.%${searchTerm}%,variant.ilike.%${searchTerm}%`,
+    );
   }
 
-  const { data, error, count } = await query
+  const { data, error, count } = await query;
   if (error) throw error;
   return {
     products: data as Product[],
     count: count || 0,
-  }
+  };
 };
 
 const fetchPaymentMethods = async (): Promise<PaymentMethod[]> => {
@@ -92,23 +98,23 @@ export default function NewSalePage() {
     isValidating: productsValidating,
     size: productsPageSize,
     setSize: setProductsPageSize,
-  } = useSWRInfinite<ProductsPageResponse>(
-    (pageIndex, previousPageData) => {
-      if (previousPageData && previousPageData.products.length === 0) return null
-      return ["new-sale-products", pageIndex, search] as ProductsPageKey
-    },
-    fetchProductsPage
-  )
+  } = useSWRInfinite<ProductsPageResponse>((pageIndex, previousPageData) => {
+    if (previousPageData && previousPageData.products.length === 0) return null;
+    return ["new-sale-products", pageIndex, search] as ProductsPageKey;
+  }, fetchProductsPage);
   const { data: paymentMethods } = useSWR<PaymentMethod[]>(
     "payment_methods",
     fetchPaymentMethods,
   );
 
-  const loadMoreProductsRef = useRef<HTMLDivElement | null>(null)
+  const loadMoreProductsRef = useRef<HTMLDivElement | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethodId, setPaymentMethodId] = useState<string>("");
   const [pointOfSale, setPointOfSale] = useState<Channel>("LOCAL");
   const [notes, setNotes] = useState("");
+  const [orderNumber, setOrderNumber] = useState("");
+  const [isPaid, setIsPaid] = useState(false);
+  const [isDelivered, setIsDelivered] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -120,28 +126,39 @@ export default function NewSalePage() {
 
   const filteredProducts = useMemo(
     () => productsPages?.flatMap((page) => page.products) || [],
-    [productsPages]
-  )
-  const totalProducts = productsPages?.[0]?.count || 0
-  const hasMoreProducts = filteredProducts.length < totalProducts
-  const isLoadingMoreProducts = productsValidating && productsPageSize > 0
+    [productsPages],
+  );
+  const totalProducts = productsPages?.[0]?.count || 0;
+  const hasMoreProducts = filteredProducts.length < totalProducts;
+  const isLoadingMoreProducts = productsValidating && productsPageSize > 0;
 
   useEffect(() => {
-    const loadMoreElement = loadMoreProductsRef.current
-    if (!loadMoreElement || !hasMoreProducts || productsLoading || isLoadingMoreProducts) return
+    const loadMoreElement = loadMoreProductsRef.current;
+    if (
+      !loadMoreElement ||
+      !hasMoreProducts ||
+      productsLoading ||
+      isLoadingMoreProducts
+    )
+      return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setProductsPageSize((currentSize) => currentSize + 1)
+          setProductsPageSize((currentSize) => currentSize + 1);
         }
       },
-      { rootMargin: "300px" }
-    )
+      { rootMargin: "300px" },
+    );
 
-    observer.observe(loadMoreElement)
-    return () => observer.disconnect()
-  }, [hasMoreProducts, isLoadingMoreProducts, productsLoading, setProductsPageSize])
+    observer.observe(loadMoreElement);
+    return () => observer.disconnect();
+  }, [
+    hasMoreProducts,
+    isLoadingMoreProducts,
+    productsLoading,
+    setProductsPageSize,
+  ]);
 
   const selectedPaymentMethod = paymentMethods?.find(
     (pm) => pm.id === paymentMethodId,
@@ -197,6 +214,9 @@ export default function NewSalePage() {
   const clearCart = () => {
     setCart([]);
     setNotes("");
+    setOrderNumber("");
+    setPaymentMethodId(paymentMethods?.[0]?.id || "");
+    setPointOfSale("LOCAL");
   };
 
   const handleSubmit = async () => {
@@ -213,7 +233,9 @@ export default function NewSalePage() {
           subtotal,
           discount,
           total,
-          status: "PENDING",
+          status: isDelivered ? "DELIVERED" : "PREPARING",
+          is_paid: isPaid || false,
+          order_number: orderNumber || null,
         })
         .select()
         .single();
@@ -236,10 +258,11 @@ export default function NewSalePage() {
           .eq("id", item.product.id);
         if (stockError) throw stockError;
       }
-      toast.success("Venta registrada correctamente", { 
-        duration: 4000, 
-        position: "top-center", 
-        style: { color: "green" }   });
+      toast.success("Venta registrada correctamente", {
+        duration: 4000,
+        position: "top-center",
+        style: { color: "green" },
+      });
       clearCart();
       mutate("products");
       mutate("new-sale-products");
@@ -254,10 +277,10 @@ export default function NewSalePage() {
 
   const cartContent = (
     <>
-      <CardHeader className="border-b border-border py-0">
+      <CardHeader className="border-b border-border py-0 pb-0">
         <CardTitle className="flex items-center justify-start w-full gap-2 px-0 pt-4">
           <ShoppingCart className="h-5 w-5 flex flex-row items-center" />
-            Carrito
+          Carrito
           {itemCount > 0 && (
             <Badge variant="secondary" className="ml-2">
               {itemCount} items
@@ -323,10 +346,10 @@ export default function NewSalePage() {
           )}
         </div>
         <div className="space-y-3 border-t border-border pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div className="col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">
-                Canal
+                Canal *
               </label>
               <Select
                 value={pointOfSale}
@@ -344,9 +367,9 @@ export default function NewSalePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="col-span-2">
               <label className="text-xs text-muted-foreground mb-1 block">
-                Método de Pago
+                Método de Pago *
               </label>
               <Select
                 value={paymentMethodId}
@@ -365,7 +388,50 @@ export default function NewSalePage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="relative col-span-2">
+              <label className="text-xs text-muted-foreground mb-1 block w-full">
+                Orden de Compra
+              </label>
+              <span
+                className={cn(
+                  "absolute left-3 top-7.5 text-muted-foreground leading-none",
+                  pointOfSale !== "WEB" && "opacity-50",
+                )}
+              >
+                #
+              </span>
+              <Textarea
+                placeholder="0000"
+                value={orderNumber}
+                onChange={(e) => setOrderNumber(e.target.value)}
+                rows={1}
+                className="resize-none pl-7 min-h-0 w-20"
+                disabled={pointOfSale !== "WEB"}
+              />
+            </div>
+
+            <div className="flex flex-col items-center justify-center">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Abonado
+              </label>
+              <Checkbox
+                className={cn("mx-auto", pointOfSale !== "WEB" && "opacity-50")}
+                checked={isPaid}
+                onCheckedChange={(checked) => setIsPaid(checked === true)}
+              />
+            </div>
+            <div className="flex flex-col items-center justify-center">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Entregado
+              </label>
+              <Checkbox
+                className={cn("mx-auto", pointOfSale !== "WEB" && "opacity-50")}
+                checked={isDelivered}
+                onCheckedChange={(checked) => setIsDelivered(checked === true)}
+              />
+            </div>
           </div>
+
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">
               Notas
@@ -395,7 +461,7 @@ export default function NewSalePage() {
             <span>{formatPrice(total)}</span>
           </div>
         </div>
-        <div className="flex gap-2 mt-4 flex-wrap">
+        <div className="flex gap-2 mt-2 flex-wrap">
           <Button
             variant="outline"
             className="flex-1"
@@ -405,7 +471,7 @@ export default function NewSalePage() {
             Limpiar
           </Button>
           <Button
-            className="flex-1"
+            className="flex-2"
             onClick={handleSubmit}
             disabled={cart.length === 0 || isSubmitting}
           >
@@ -413,22 +479,8 @@ export default function NewSalePage() {
               "Procesando..."
             ) : (
               <>
-                <Check className="h-4 w-4 mr-1" />
-                Confirmar
-              </>
-            )}
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={handleSubmit}
-            disabled={cart.length === 0 || isSubmitting}
-          >
-            {isSubmitting ? (
-              "Procesando..."
-            ) : (
-              <>
-                <MessageCircleMore className="h-4 w-4 mr-1" />
-                Confirmar y Enviar por Whatsapp
+                <CheckIcon className="h-4 w-4 mr-1" />
+                Confirmar y Enviar
               </>
             )}
           </Button>
@@ -438,13 +490,13 @@ export default function NewSalePage() {
   );
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] flex-col lg:flex-row gap-4 lg:gap-6">
-      <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex h-[calc(100vh-1rem)] flex-col lg:flex-row gap-4 lg:gap-6">
+      <div className="flex-1 flex flex-col min-w-0 pt-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h1 className="text-2xl font-semibold text-foreground">
             Nueva Venta
           </h1>
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar productos..."
@@ -454,7 +506,7 @@ export default function NewSalePage() {
             />
           </div>
         </div>
-        <div className="flex-1 overflow-auto pb-20 lg:pb-0">
+        <div className="flex-1 overflow-auto pb-20 lg:pb-0 pr-2">
           {productsLoading ? (
             <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
               {[...Array(8)].map((_, i) => (
@@ -471,22 +523,24 @@ export default function NewSalePage() {
             </div>
           ) : (
             <>
-            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
-              {filteredProducts.map((product) => {
-                const inCart = cart.find(
-                  (item) => item.product.id === product.id,
-                );
-                return (
-                  <button
-                    key={product.id}
-                    onClick={() => addToCart(product)}
-                    className={cn(
-                      "relative p-4 rounded-lg border text-left transition-all",
-                      "bg-card hover:bg-accent/90 hover:border-foreground/20",
-                      inCart && "ring-2 ring-primary",
-                    )}
-                  >
-
+              <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredProducts.map((product) => {
+                  const inCart = cart.find(
+                    (item) => item.product.id === product.id,
+                  );
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => addToCart(product)}
+                      className={cn(
+                        "relative p-4 rounded-lg border text-left transition-all overflow-hidden",
+                        product.stock > 0
+                          ? "bg-card hover:bg-accent/90 hover:border-foreground/20 cursor-pointer"
+                          : "bg-card cursor-not-allowed opacity-30",
+                        inCart && product.stock > 0 && "ring-2 ring-primary",
+                      )}
+                      disabled={product.stock === 0}
+                    >
                       {inCart && (
                         <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center">
                           {inCart.quantity}
@@ -526,13 +580,21 @@ export default function NewSalePage() {
                   <div className="mt-3">
                     <Button
                       variant="outline"
-                      onClick={() => setProductsPageSize((currentSize) => currentSize + 1)}
+                      onClick={() =>
+                        setProductsPageSize((currentSize) => currentSize + 1)
+                      }
                       disabled={isLoadingMoreProducts}
                     >
-                      {isLoadingMoreProducts ? "Cargando..." : "Cargar más productos"}
+                      {isLoadingMoreProducts
+                        ? "Cargando..."
+                        : "Cargar más productos"}
                     </Button>
                   </div>
-                  <div ref={loadMoreProductsRef} className="h-1" aria-hidden="true" />
+                  <div
+                    ref={loadMoreProductsRef}
+                    className="h-1"
+                    aria-hidden="true"
+                  />
                 </>
               )}
             </>
@@ -540,7 +602,7 @@ export default function NewSalePage() {
         </div>
       </div>
 
-      <Card className="hidden lg:flex w-96 shrink-0 flex-col gap-0">
+      <Card className="hidden lg:flex w-96 shrink-0 flex-col gap-0 p-0">
         {cartContent}
       </Card>
 
