@@ -51,16 +51,16 @@ export function SalesTable({ isLoading, sales }: Props) {
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      <Table className="min-w-[900px] table-fixed">
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="w-12 text-center"></TableHead>
-            <TableHead className="w-32 text-left">Fecha</TableHead>
-            <TableHead className="w-36 text-center">ID</TableHead>
-            <TableHead className="w-28 text-center">Canal</TableHead>
-            <TableHead className="w-40 text-center">Método de Pago</TableHead>
-            <TableHead className="w-40 text-center">Estado</TableHead>
-            <TableHead className="w-32 text-right">Total</TableHead>
+            <TableHead className="text-center w-10"></TableHead>
+            <TableHead className="text-left w-18">Fecha</TableHead>
+            <TableHead className="text-center w-14">ID</TableHead>
+            <TableHead className="text-center w-14">Canal</TableHead>
+            <TableHead className="text-center w-20">Método de Pago</TableHead>
+            <TableHead className="text-center w-24">Estado</TableHead>
+            <TableHead className="text-right w-12">Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -99,7 +99,7 @@ export function SalesTable({ isLoading, sales }: Props) {
                     onClick={() => router.push(`/ventas/${sale.id}`)}
                   >
                     <TableCell
-                      className="text-center"
+                      className="text-center w-fit"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
@@ -119,15 +119,15 @@ export function SalesTable({ isLoading, sales }: Props) {
                         />
                       </button>
                     </TableCell>
-                    <TableCell className="text-left">
-                      <div className="leading-tight">
-                        <p>{dateFormatter.format(saleDate)}</p>
-                        <p className="text-xs text-muted-foreground">
+                    <TableCell className="text-left w-fit">
+                      <div className="leading-tight w-fit">
+                        <p className="w-fit">{dateFormatter.format(saleDate)}</p>
+                        <p className="text-xs text-muted-foreground w-fit">
                           {timeFormatter.format(saleDate)}
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center w-fit">
                       <div className="leading-tight">
                         <p className="font-mono text-xs text-muted-foreground">
                           {sale.id.slice(0, 8)}
@@ -137,7 +137,7 @@ export function SalesTable({ isLoading, sales }: Props) {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center w-fit">
                       <Badge variant="outline">
                         {channelLabels[sale.point_of_sale]}
                       </Badge>
@@ -155,14 +155,14 @@ export function SalesTable({ isLoading, sales }: Props) {
                         {sale.payment_method?.name ?? "-"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="text-center w-fit">
                       <Badge
                         className={cn("border", statusColors[sale.status])}
                       >
                         {statusLabels[sale.status]}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="text-right font-medium w-20">
                       {formatPrice(sale.total)}
                     </TableCell>
                   </TableRow>
