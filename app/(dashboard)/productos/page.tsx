@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import { capitalize } from '@/utils'
 
 const supabase = createClient()
-const PRODUCTS_PAGE_SIZE = 50
+const PRODUCTS_PAGE_SIZE = 15
 
 type ImportRow = Record<string, string | number | boolean | null | undefined>
 
