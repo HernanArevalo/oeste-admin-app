@@ -113,7 +113,7 @@ export default function NewSalePage() {
   const [pointOfSale, setPointOfSale] = useState<Channel>("LOCAL");
   const [notes, setNotes] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
-  const [isPaid, setIsPaid] = useState(false);
+  const [isPaid, setIsPaid] = useState(true);
   const [isDelivered, setIsDelivered] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -347,13 +347,25 @@ export default function NewSalePage() {
         </div>
         <div className="space-y-3 border-t border-border pt-4">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div className="col-span-2">
+            <div className="col-span-2 flex flex-col justify-between h-full">
               <label className="text-xs text-muted-foreground mb-1 block">
                 Canal *
               </label>
               <Select
                 value={pointOfSale}
-                onValueChange={(v) => setPointOfSale(v as Channel)}
+                onValueChange={(v) => {
+                  console.log("Selected channel:", v);
+                  setPointOfSale(v as Channel)
+                  if (v == "LOCAL") {
+                      setIsPaid(true);
+                      setIsDelivered(true);
+                      setOrderNumber("");
+                    }else{
+                      setIsPaid(false);
+                      setIsDelivered(false);
+                    }
+                  
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />
@@ -410,22 +422,32 @@ export default function NewSalePage() {
               />
             </div>
 
-            <div className="flex flex-col items-center justify-center">
-              <label className="text-xs text-muted-foreground mb-1 block">
+            <div className="flex flex-col items-center justify-between">
+              <label className="text-xs text-muted-foreground mb-1 block text-center">
                 Abonado
               </label>
               <Checkbox
-                className={cn("mx-auto", pointOfSale !== "WEB" && "opacity-50")}
+                className={cn(
+                  "h-6 w-6 border-gray-400 mb-2 opacity-80",
+                  "data-[state=checked]:bg-green-500",
+                  "data-[state=checked]:border-green-500",
+                  "data-[state=checked]:text-white",
+                )}
                 checked={isPaid}
-                onCheckedChange={(checked) => setIsPaid(checked === true)}
+                onCheckedChange={(checked) => setIsPaid(checked === true)}  
               />
             </div>
-            <div className="flex flex-col items-center justify-center">
+            <div className="flex flex-col items-center justify-between">
               <label className="text-xs text-muted-foreground mb-1 block">
                 Entregado
               </label>
               <Checkbox
-                className={cn("mx-auto", pointOfSale !== "WEB" && "opacity-50")}
+                className={cn(
+                  "h-6 w-6 border-gray-400 mb-2 opacity-80",
+                  "data-[state=checked]:bg-green-500",
+                  "data-[state=checked]:border-green-500",
+                  "data-[state=checked]:text-white",
+                )}
                 checked={isDelivered}
                 onCheckedChange={(checked) => setIsDelivered(checked === true)}
               />

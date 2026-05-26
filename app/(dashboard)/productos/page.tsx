@@ -36,7 +36,7 @@ import { capitalize, getOptimizedCloudinaryImage } from '@/utils'
 import Image from 'next/image'
 
 const supabase = createClient()
-const PRODUCTS_PAGE_SIZE = 50
+const PRODUCTS_PAGE_SIZE = 10
 
 type ImportRow = Record<string, string | number | boolean | null | undefined>
 
@@ -724,182 +724,6 @@ export default function ProductsPage() {
           )}
         </div>
 
-        {/* Table */}
-        <div className="rounded-lg border border-border bg-card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-fit">Imagen</TableHead>
-                <TableHead className="w-[150px]">Producto</TableHead>
-                <TableHead>Variante</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead className="text-right">Precio</TableHead>
-                <TableHead className="text-center">Stock</TableHead>
-                <TableHead className="text-center">Activo</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {productsLoading ? (
-                [...Array(5)].map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={7}>
-                      <div className="h-10 bg-secondary/50 animate-pulse rounded" />
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : products.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    No se encontraron productos
-                  </TableCell>
-                </TableRow>
-              ) : (
-                products.map((product) => {
-                  const isEdited = editedProducts.has(product.id)
-                  return (
-                    <TableRow key={product.id} className={cn(isEdited && 'bg-amber-500/5')}>
-                      <TableCell className='w-fit'>
-                        <button
-                          type="button"
-                          onClick={() => rowFileInputs.current[product.id]?.click()}
-                          className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-muted/40"
-                          disabled={uploadingImage === product.id}
-                        >
-                          <Image
-                            width={54}
-                            height={54}
-                            src={getProductValue(product, 'image_url') && getOptimizedCloudinaryImage(getProductValue(product, 'image_url') as string, 54) || '/placeholder.jpg'}
-                            alt={product.name}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute inset-0 hidden items-center justify-center bg-black/45 text-white group-hover:flex">
-                            {uploadingImage === product.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <ImageIcon className="h-4 w-4" />
-                            )}
-                          </div>
-                        </button>
-                        <input
-                          ref={(el) => {
-                            rowFileInputs.current[product.id] = el
-                          }}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              handleImageUpload(file, product.id, product.name, product.variant)
-                            }
-                            e.target.value = ''
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={getProductValue(product, 'name') as string}
-                          onChange={(e) => handleFieldChange(product.id, 'name', e.target.value)}
-                          className="h-8 bg-transparent border-transparent hover:border-input focus:border-input"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={(getProductValue(product, 'variant') as string) || ''}
-                          onChange={(e) => handleFieldChange(product.id, 'variant', e.target.value)}
-                          className="h-8 bg-transparent border-transparent hover:border-input focus:border-input"
-                          placeholder="-"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={(getProductValue(product, 'category_id') as string) || 'none'}
-                          onValueChange={(v) => handleFieldChange(product.id, 'category_id', v === 'none' ? null : v)}
-                        >
-                          <SelectTrigger className="h-8 w-40 bg-transparent border-transparent hover:border-input">
-                            <SelectValue placeholder="Sin categoria" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Sin categoria</SelectItem>
-                            {categories?.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          value={getProductValue(product, 'price') as number}
-                          onChange={(e) => handleFieldChange(product.id, 'price', parseFloat(e.target.value) || 0)}
-                          className="h-8 w-28 text-right bg-transparent border-transparent hover:border-input focus:border-input ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Input
-                          min={0}
-                          type="number"
-                          value={getProductValue(product, 'stock') as number}
-                          onChange={(e) => handleFieldChange(product.id, 'stock', parseInt(e.target.value) || 0)}
-                          className="h-8 w-20 text-center bg-transparent border-transparent hover:border-input focus:border-input mx-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={getProductValue(product, 'is_active') as boolean}
-                          onCheckedChange={(v) => handleFieldChange(product.id, 'is_active', v)}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Stats */}
-        {!productsLoading && totalProducts > 0 && (
-          <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              Mostrando {products.length} de {totalProducts} productos encontrados
-            </span>
-            {hasMoreProducts && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setProductPagesSize((currentSize) => currentSize + 1)}
-                disabled={isLoadingMoreProducts}
-              >
-                {isLoadingMoreProducts ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
-                {isLoadingMoreProducts ? 'Cargando...' : 'Cargar más'}
-              </Button>
-            )}
-          </div>
-        )}
-        {hasMoreProducts && <div ref={loadMoreRef} className="h-1" aria-hidden="true" />}
-      </div>
-          {hasChanges && (
-          <div className="flex items-center gap-2 fixed bottom-5 right-5 z-999 bg-secondary px-4 py-2 rounded-lg shadow-lg">
-            <Badge variant="outline" className="text-amber-400 border-amber-400/30">
-              {editedProducts.size} cambios sin guardar
-            </Badge>
-            <Button variant="outline" size="sm" onClick={cancelChanges}>
-              <X className="h-4 w-4 mr-1" />
-              Cancelar
-            </Button>
-            <Button size="sm" onClick={saveChanges} disabled={isSaving}>
-              <Save className="h-4 w-4 mr-1" />
-              {isSaving ? 'Guardando...' : 'Guardar'}
-            </Button>
-          </div>
-          )}
-
       {/* Table */}
       <div className="rounded-lg border border-border bg-card">
         <Table>
@@ -1057,6 +881,7 @@ export default function ProductsPage() {
         </div>
       )}
       {hasMoreProducts && <div ref={loadMoreRef} className="h-1" aria-hidden="true" />}
+    </div>
     </>
   )
 }

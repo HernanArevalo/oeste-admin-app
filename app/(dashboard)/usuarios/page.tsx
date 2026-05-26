@@ -313,7 +313,7 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="rounded-lg border border-border bg-card m-0">
         <Table>
           <TableHeader>
             <TableRow>
@@ -452,7 +452,7 @@ export default function UsersPage() {
       </div>
 
       {!isLoading && filteredUsers.length > 0 && (
-        <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground mt-3 mb-4">
           {filteredUsers.length} usuarios encontrados
         </div>
       )}
