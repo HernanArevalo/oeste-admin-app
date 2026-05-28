@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: 'OESTE GAFAS | admin',

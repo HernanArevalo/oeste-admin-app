@@ -46,9 +46,9 @@ type UserRowState = User & {
 }
 
 const roles = [
-  { id: 'admin', name: 'Owner' },
-  { id: 'seller', name: 'Seller' },
-  { id: 'user', name: 'User' },
+  { id: 'ADMIN', name: 'Owner' },
+  { id: 'SELLER', name: 'Seller' },
+  { id: 'USER', name: 'User' },
 ]
 
 const fetchUsers = async () => {

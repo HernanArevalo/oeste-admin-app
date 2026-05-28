@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Package, ShoppingCart, ListOrdered, Tags, CreditCard, Upload, Menu, Users, User } from 'lucide-react'
+import { Package, ShoppingCart, ListOrdered, Tags, CreditCard, Menu, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { Session } from 'next-auth'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { LogoutButton } from '@/components/auth/logout-button'
 import { useState } from 'react'
 
 const navigation = [
@@ -17,9 +20,16 @@ const navigation = [
   { name: 'Usuarios', href: '/usuarios', icon: Users },
 ]
 
-export function AppSidebar() {
+export function AppSidebar({ user }: { user?: Session['user'] }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+
+  const initials = (user?.name ?? user?.email ?? 'OG')
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 
   const sidebarContent = (
     <>
@@ -50,12 +60,18 @@ export function AppSidebar() {
         })}
       </nav>
 
-      <div className="border-t border-sidebar-border p-4 flex flex-col justify-center gap-4">
-        <div className="py-3 px-2 flex items-center gap-3 rounded-xl text-sm font-medium text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-colors">
-          <User className="h-5 w-5"/>
-          Oeste Gafas
+      <div className="flex flex-col justify-center gap-4 border-t border-sidebar-border p-4">
+        <div className="flex items-center gap-3 rounded-xl px-2 py-3 text-sm font-medium text-muted-foreground">
+          <Avatar className="h-9 w-9">
+            <AvatarImage src={user?.image_url ?? user?.image ?? undefined} alt={user?.name ?? 'Usuario'} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="truncate text-sidebar-foreground">{user?.name ?? 'Oeste Gafas'}</p>
+            <p className="truncate text-xs font-normal text-muted-foreground">{user?.email}</p>
+          </div>
         </div>
-        <Button className='bg-white text-xs p-1 font-bold w-full'>Cerrar Sesión</Button>
+        <LogoutButton />
       </div>
     </>
   )
