@@ -28,8 +28,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
-import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'
+import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { capitalize, getOptimizedCloudinaryImage } from '@/utils'
@@ -190,6 +200,8 @@ export default function ProductsPage() {
   const [isNewProductOpen, setIsNewProductOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const rowFileInputs = useRef<Record<string, HTMLInputElement | null>>({})
   const newProductFileInput = useRef<HTMLInputElement | null>(null)
   const importFileInput = useRef<HTMLInputElement | null>(null)
@@ -490,6 +502,39 @@ export default function ProductsPage() {
     }
   }
 
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return
+
+    setIsDeleting(true)
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productToDelete.id)
+
+      if (error) throw error
+
+      setEditedProducts((prev) => {
+        const newMap = new Map(prev)
+        newMap.delete(productToDelete.id)
+        return newMap
+      })
+      toast.success('Producto eliminado')
+      setProductToDelete(null)
+      refreshProducts()
+    } catch (error) {
+      console.error('Error deleting product:', error)
+      toast.error('Error al eliminar el producto')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const productToDeleteName = productToDelete
+    ? `"${productToDelete.name}${productToDelete.variant ? ` - ${productToDelete.variant}` : ''}"`
+    : 'este producto'
+
   const exportToExcel = async () => {
     try {
       const allProducts = await fetchAllProductsForExport()
@@ -736,20 +781,21 @@ export default function ProductsPage() {
               <TableHead className="text-right">Precio</TableHead>
               <TableHead className="text-center">Stock</TableHead>
               <TableHead className="text-center">Activo</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {productsLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <div className="h-10 bg-secondary/50 animate-pulse rounded" />
                   </TableCell>
                 </TableRow>
               ))
             ) : products.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                   <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   No se encontraron productos
                 </TableCell>
@@ -851,6 +897,18 @@ export default function ProductsPage() {
                         onCheckedChange={(v) => handleFieldChange(product.id, 'is_active', v)}
                       />
                     </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => setProductToDelete(product)}
+                        aria-label={`Eliminar ${product.name}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 )
               })
@@ -882,6 +940,40 @@ export default function ProductsPage() {
       )}
       {hasMoreProducts && <div ref={loadMoreRef} className="h-1" aria-hidden="true" />}
     </div>
+
+    <AlertDialog
+      open={Boolean(productToDelete)}
+      onOpenChange={(open) => !open && !isDeleting && setProductToDelete(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Estás por eliminar {productToDeleteName}. Esta acción no tiene vuelta atrás.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(event) => {
+              event.preventDefault()
+              handleDeleteProduct()
+            }}
+            disabled={isDeleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Eliminando...
+              </>
+            ) : (
+              'Eliminar definitivamente'
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   )
 }
