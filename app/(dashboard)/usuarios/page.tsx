@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@/lib/types'
@@ -37,6 +38,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 
 const supabase = createClient()
 
@@ -46,7 +48,7 @@ type UserRowState = User & {
 }
 
 const roles = [
-  { id: 'ADMIN', name: 'Owner' },
+  { id: 'ADMIN', name: 'Admin' },
   { id: 'SELLER', name: 'Seller' },
   { id: 'USER', name: 'User' },
 ]
@@ -64,7 +66,7 @@ const fetchUsers = async () => {
 
 export default function UsersPage() {
   const { data: users, isLoading } = useSWR('all-users', fetchUsers)
-
+  const router = useRouter()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [showInactive, setShowInactive] = useState(false)
@@ -166,6 +168,7 @@ export default function UsersPage() {
       setEditedUsers(new Map())
 
       mutate('all-users')
+      router.refresh()
     } catch (error) {
       console.error(error)
       toast.error('Error al guardar cambios')
@@ -457,7 +460,7 @@ export default function UsersPage() {
         </div>
       )}
       <p className="text-sm text-muted-foreground m-0">
-        El rol "Owner" tiene acceso total.
+        El rol "Admin" tiene acceso total.
       </p>
       <p className="text-sm text-muted-foreground m-0">
         El rol "Seller" puede gestionar productos y ventas.

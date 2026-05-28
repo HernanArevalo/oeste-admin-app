@@ -29,11 +29,6 @@ declare module 'next-auth/providers/google' {
   export default function Google(config?: unknown): unknown
 }
 
-declare module 'next-auth/react' {
-  export function signIn(provider?: string, options?: Record<string, unknown>): Promise<unknown>
-  export function signOut(options?: Record<string, unknown>): Promise<unknown>
-}
-
 declare module 'next-auth/jwt' {
   export interface JWT {
     name?: string | null

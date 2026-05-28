@@ -12,17 +12,42 @@ import { LogoutButton } from '@/components/auth/logout-button'
 import { useState } from 'react'
 
 const navigation = [
-  { name: 'Nueva Venta', href: '/', icon: ShoppingCart },
-  { name: 'Ventas', href: '/ventas', icon: ListOrdered },
-  { name: 'Productos', href: '/productos', icon: Package },
-  { name: 'Categorias', href: '/categorias', icon: Tags },
-  { name: 'Métodos de Pago', href: '/metodos-pago', icon: CreditCard },
-  { name: 'Usuarios', href: '/usuarios', icon: Users },
+  { name: 'Nueva Venta',
+      href: '/',
+      icon: ShoppingCart,
+      totalAccess: false
+    },
+  { name: 'Ventas',
+    href: '/ventas',
+    icon: ListOrdered,
+    totalAccess: true
+  },
+  { name: 'Productos',
+    href: '/productos',
+    icon: Package,
+    totalAccess: true
+  },
+  { name: 'Categorias',
+    href: '/categorias',
+    icon: Tags,
+    totalAccess: false
+  },
+  { name: 'Métodos de Pago',
+    href: '/metodos-pago',
+    icon: CreditCard,
+    totalAccess: false
+  },
+  { name: 'Usuarios',
+    href: '/usuarios',
+    icon: Users,
+    totalAccess: true
+  },
 ]
 
 export function AppSidebar({ user }: { user?: Session['user'] }) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const sessionRole = user?.role || 'user'
 
   const initials = (user?.name ?? user?.email ?? 'OG')
     .split(' ')
@@ -41,7 +66,7 @@ export function AppSidebar({ user }: { user?: Session['user'] }) {
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
-        {navigation.map((item) => {
+        {navigation.filter((item) => item.totalAccess || sessionRole === 'ADMIN').map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
           return (
             <Link
@@ -61,7 +86,7 @@ export function AppSidebar({ user }: { user?: Session['user'] }) {
       </nav>
 
       <div className="flex flex-col justify-center gap-4 border-t border-sidebar-border p-4">
-        <div className="flex items-center gap-3 rounded-xl px-2 py-3 text-sm font-medium text-muted-foreground">
+        <div className="flex items-center gap-3 rounded-xl text-sm font-medium text-muted-foreground">
           <Avatar className="h-9 w-9">
             <AvatarImage src={user?.image_url ?? user?.image ?? undefined} alt={user?.name ?? 'Usuario'} />
             <AvatarFallback>{initials}</AvatarFallback>
@@ -69,6 +94,8 @@ export function AppSidebar({ user }: { user?: Session['user'] }) {
           <div className="min-w-0">
             <p className="truncate text-sidebar-foreground">{user?.name ?? 'Oeste Gafas'}</p>
             <p className="truncate text-xs font-normal text-muted-foreground">{user?.email}</p>
+            <p className="mt-1 truncate text-xs font-normal lowercase bg-slate-400 flex justify-center items-center py-0 px-2 text-black rounded-xl w-fit">{user?.role}</p>
+
           </div>
         </div>
         <LogoutButton />

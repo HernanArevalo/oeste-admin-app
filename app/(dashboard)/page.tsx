@@ -165,6 +165,8 @@ export default function NewSalePage() {
   );
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+
+
   const { subtotal, discount, total } = useMemo(() => {
     const sub = cart.reduce(
       (sum, item) => sum + item.product.price * item.quantity,

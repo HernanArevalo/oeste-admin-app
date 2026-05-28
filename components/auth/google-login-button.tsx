@@ -7,7 +7,7 @@ export function GoogleLoginButton({ callbackUrl = '/' }: { callbackUrl?: string 
   return (
     <Button
       type="button"
-      className="h-12 w-full rounded-full bg-white font-semibold text-zinc-950 hover:bg-zinc-200"
+      className="cursor-pointer h-12 w-full rounded-full bg-white font-semibold text-zinc-950 hover:bg-zinc-200"
       onClick={() => signIn('google', { callbackUrl })}
     >
       Iniciar sesión con Google
