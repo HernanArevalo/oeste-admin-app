@@ -114,7 +114,8 @@ export default function NewSalePage() {
   const [notes, setNotes] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
   const [isPaid, setIsPaid] = useState(true);
-  const [isDelivered, setIsDelivered] = useState(false);
+  const [isDelivered, setIsDelivered] = useState(true);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -137,7 +138,7 @@ export default function NewSalePage() {
     if (
       !loadMoreElement ||
       !hasMoreProducts ||
-      productsLoading ||
+      productsLoading  ||
       isLoadingMoreProducts
     )
       return;
@@ -302,7 +303,14 @@ export default function NewSalePage() {
               <div
                 key={item.product.id}
                 className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50"
-              >
+              > 
+                <Image
+                  width={54}
+                  height={54}
+                  src={(item.product.image_url as string) || '/placeholder.jpg'}
+                  alt={item.product.name}
+                  className="w-14 h-14 rounded-md object-cover bg-muted/50"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-foreground text-sm line-clamp-1">
                     {item.product.name}
@@ -571,7 +579,9 @@ export default function NewSalePage() {
                         </Badge>
                       )}
                       <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
-                        <img
+                        <Image
+                          width={400}
+                          height={400}
                           src={product.image_url || "/placeholder.jpg"}
                           alt={product.name}
                           className="h-full w-full object-cover"

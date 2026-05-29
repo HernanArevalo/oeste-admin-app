@@ -812,7 +812,9 @@ export default function ProductsPage() {
                         className="group relative h-14 w-14 overflow-hidden rounded-md border border-border bg-muted/40"
                         disabled={uploadingImage === product.id}
                       >
-                        <img
+                        <Image
+                          width={54}
+                          height={54}
                           src={(getProductValue(product, 'image_url') as string) || '/placeholder.jpg'}
                           alt={product.name}
                           className="h-full w-full object-cover"
