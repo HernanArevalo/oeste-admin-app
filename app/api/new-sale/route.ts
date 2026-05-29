@@ -1,10 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { NewSaleRequestBody, NewSaleResponse, Product, Sale } from '@/interfaces'
+import type { ApiResponse, NewSaleRequestBody, NewSaleResponse, Product, Sale } from '@/interfaces'
 
 const channelSchema = z.enum(['LOCAL', 'WEB', 'OTHER'])
 const saleStatusSchema = z.enum(['PREPARING', 'READY', 'SHIPPED', 'DELIVERED', 'CANCELLED'])
+
+
 
 const newSaleSchema = z.object({
   order_number: z.number().int().positive().nullable().optional(),
@@ -34,16 +36,23 @@ function getRequestApiKey(request: NextRequest) {
   return headerApiKey?.trim()
 }
 
-function jsonError(message: string, status: number, details?: unknown) {
-  return NextResponse.json({ error: message, details }, { status })
+function jsonError(message: string, status: number, data?: unknown) {
+  return NextResponse.json(
+    {
+      ok: false,
+      message,
+      data: data ?? null,
+    },
+    { status },
+  )
 }
 
 export async function POST(request: NextRequest) {
-  const expectedApiKey = process.env.NEW_SALE_API_KEY
+  const expectedApiKey = process.env.API_KEY
   const requestApiKey = getRequestApiKey(request)
 
   if (!expectedApiKey) {
-    return jsonError('NEW_SALE_API_KEY is not configured', 500)
+    return jsonError('API_KEY is not configured', 500)
   }
 
   if (!requestApiKey || requestApiKey !== expectedApiKey) {
@@ -177,7 +186,14 @@ export async function POST(request: NextRequest) {
 
     if (fetchSaleError) throw fetchSaleError
 
-    return NextResponse.json<NewSaleResponse>({ sale: saleWithRelations }, { status: 201 })
+return NextResponse.json<ApiResponse<Sale>>(
+  {
+    ok: true,
+    message: 'Sale created successfully',
+    data: saleWithRelations,
+  },
+  { status: 201 },
+)
   } catch (error) {
     await Promise.all(
       updatedStockItems.map((item) =>
