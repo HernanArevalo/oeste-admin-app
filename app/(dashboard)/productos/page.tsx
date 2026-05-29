@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx'
 import useSWR, { mutate } from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { createClient } from '@/lib/supabase/client'
-import { Product, Category, ProductRowState } from '@/lib/types'
+import { Product, Category, ProductRowState, ImportRow, ProductsPageKey, ProductsPageResponse } from '@/interfaces'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -48,7 +48,6 @@ import Image from 'next/image'
 const supabase = createClient()
 const PRODUCTS_PAGE_SIZE = 10
 
-type ImportRow = Record<string, string | number | boolean | null | undefined>
 
 const getImportValue = (row: ImportRow, columnName: string) => {
   const normalizedColumnName = columnName.trim().toLowerCase()
@@ -94,18 +93,6 @@ const buildImportedProductVariant = (
   return variant || null
 }
 
-type ProductsPageKey = [
-  'products-page',
-  number,
-  string,
-  string,
-  boolean,
-]
-
-type ProductsPageResponse = {
-  products: Product[]
-  count: number
-}
 
 const sanitizeSearchTerm = (value: string) => value.replace(/[%,]/g, '').trim()
 

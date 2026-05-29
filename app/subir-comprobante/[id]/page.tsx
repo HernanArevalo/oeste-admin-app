@@ -6,12 +6,10 @@ import { Upload, CheckCircle2, AlertCircle, ImageIcon, Loader2 } from 'lucide-re
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Image from 'next/image'
+import type { UploadReceiptPageProps } from '@/interfaces'
 
-interface PageProps {
-  params: Promise<{ id: string }>
-}
 
-export default function UploadReceiptPage({ params }: PageProps) {
+export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
   const { id } = use(params)
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)

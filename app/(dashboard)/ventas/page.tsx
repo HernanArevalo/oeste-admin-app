@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import useSWRInfinite from 'swr/infinite'
 import { createClient } from '@/lib/supabase/client'
-import { Sale, SaleStatus, Channel, statusLabels, channelLabels } from '@/lib/types'
+import { Sale, SaleStatus, Channel, SalesPageKey, SalesPageResponse, statusLabels, channelLabels } from '@/interfaces'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -15,11 +15,6 @@ import { formatPrice } from '@/utils'
 const supabase = createClient()
 const SALES_PAGE_SIZE = 10
 
-type SalesPageKey = ['sales-page', number, string, SaleStatus | 'all', Channel | 'all']
-type SalesPageResponse = {
-  sales: Sale[]
-  count: number
-}
 
 const fetchSalesPage = async ([, pageIndex, search, statusFilter, channelFilter]: SalesPageKey): Promise<SalesPageResponse> => {
   const from = pageIndex * SALES_PAGE_SIZE
