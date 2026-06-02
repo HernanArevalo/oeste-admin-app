@@ -253,7 +253,7 @@ export default function ProductsPage() {
         formData.append('productVariant', productVariant)
       }
 
-      const response = await fetch('/api/cloudinary', {
+      const response = await fetch('/api/cloudinary/product', {
         method: 'POST',
         body: formData,
       })

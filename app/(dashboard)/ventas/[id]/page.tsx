@@ -140,7 +140,7 @@ Gracias por tu compra!`
   }
 
   const copyUploadLink = () => {
-    const link = `${window.location.origin}/subir-comprobante/${id}`
+    const link = `${window.location.origin}/ventas/${id}/comprobante`
     navigator.clipboard.writeText(link)
     setCopied(true)
     toast.success('Link copiado al portapapeles')
@@ -425,7 +425,7 @@ Gracias por tu compra!`
                   <Button
                     variant="link"
                     size="sm"
-                    className="mt-2"
+                    className="mt-2 cursor-pointer"
                     onClick={copyUploadLink}
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />

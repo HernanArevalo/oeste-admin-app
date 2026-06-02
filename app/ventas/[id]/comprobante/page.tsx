@@ -1,85 +1,143 @@
-'use client'
+"use client";
 
-import { useState, useCallback, use } from 'react'
-import { useDropzone } from 'react-dropzone'
-import { Upload, CheckCircle2, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import Image from 'next/image'
-import type { UploadReceiptPageProps } from '@/interfaces'
+import { useState, useCallback, use } from "react";
+import { useDropzone } from "react-dropzone";
+import {
+  Upload,
+  CheckCircle2,
+  AlertCircle,
+  ImageIcon,
+  Loader2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Image from "next/image";
+import type { Sale, UploadReceiptPageProps } from "@/interfaces";
+import { NextResponse } from "next/dist/server/web/spec-extension/response";
+import { createClient } from "@/lib/supabase/client";
+import useSWR from "swr";
 
+const getSale = async (saleId: string) => {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('sales')
+    .select('id')
+    .eq('id', saleId)
+    .single()
+  if (error) {
+    console.error('Error fetching sale:', error)
+    throw new Error('Venta no encontrada')
+  }
+  return data
+}
+
+const supabase = createClient()
+
+const fetcher = async (id: string) => {
+  const { data: sale, error: saleError } = await supabase
+    .from('sales')
+    .select('*, payment_method:payment_methods(*)')
+    .eq('id', id)
+    .single()
+
+  if (saleError) throw saleError
+  return { ...sale } as Sale 
+}
 
 export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
-  const { id } = use(params)
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [success, setSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { id } = use(params);
+  const { data: sale, isLoading } = useSWR(id, fetcher)
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  console.log("Sale data:", sale)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
-    const selectedFile = acceptedFiles[0]
+    const selectedFile = acceptedFiles[0];
     if (selectedFile) {
-      setFile(selectedFile)
-      setError(null)
-      
+      setFile(selectedFile);
+      setError(null);
+
       // Create preview
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onload = () => {
-        setPreview(reader.result as string)
-      }
-      reader.readAsDataURL(selectedFile)
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
     }
-  }, [])
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'image/jpeg': ['.jpg', '.jpeg'],
-      'image/png': ['.png'],
-      'image/webp': ['.webp'],
-      'image/heic': ['.heic'],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
+      "image/heic": [".heic"],
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: false,
-  })
+  });
 
   const handleUpload = async () => {
-    if (!file) return
+    if (!file) return;
 
-    setUploading(true)
-    setError(null)
+    setUploading(true);
+    setError(null);
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('saleId', id)
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("saleId", id);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      const response = await fetch("/api/cloudinary/comprobante", {
+        method: "POST",
         body: formData,
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Error al subir el archivo')
+        throw new Error(data.error || "Error al subir el archivo");
       }
 
-      setSuccess(true)
+      const { error: updateError } = await supabase
+        .from('sales')
+        .update({
+          receipt_image_url: data.url,
+          receipt_uploaded_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+  
+      if (updateError) {
+        console.error('Error updating sale:', updateError)
+        return NextResponse.json({ error: 'Error al actualizar la venta' }, { status: 500 })
+      }
+      setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al subir el archivo')
+      setError(
+        err instanceof Error ? err.message : "Error al subir el archivo",
+      );
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const removeFile = () => {
-    setFile(null)
-    setPreview(null)
-  }
+    setFile(null);
+    setPreview(null);
+  };
 
-  if (success) {
+  if (success || sale?.receipt_image_url) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-zinc-900 border-zinc-800">
@@ -91,12 +149,13 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
               Comprobante Subido
             </h2>
             <p className="text-zinc-400">
-              Tu comprobante de pago ha sido recibido exitosamente. Gracias por tu compra.
+              Tu comprobante de pago ha sido recibido exitosamente. Gracias por
+              tu compra.
             </p>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -130,9 +189,10 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
               {...getRootProps()}
               className={`
                 border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                ${isDragActive 
-                  ? 'border-zinc-500 bg-zinc-800/50' 
-                  : 'border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30'
+                ${
+                  isDragActive
+                    ? "border-zinc-500 bg-zinc-800/50"
+                    : "border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/30"
                 }
               `}
             >
@@ -175,7 +235,9 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
                     <ImageIcon className="w-5 h-5 text-zinc-400" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-zinc-200 truncate">{file.name}</p>
+                    <p className="text-sm text-zinc-200 truncate">
+                      {file.name}
+                    </p>
                     <p className="text-xs text-zinc-500">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>
@@ -213,5 +275,5 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
