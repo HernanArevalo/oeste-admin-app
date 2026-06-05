@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { Category } from '@/lib/types'
+import { Category } from '@/interfaces'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'

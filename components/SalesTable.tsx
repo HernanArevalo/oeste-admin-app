@@ -13,14 +13,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight } from "lucide-react";
 import { formatPrice } from "@/utils";
-import { Sale, statusLabels, channelLabels, statusColors } from "@/lib/types";
+import { SalesTableProps, statusLabels, channelLabels, statusColors } from "@/interfaces";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 
-interface Props {
-  sales: Sale[];
-  isLoading: boolean;
-}
 
 const dateFormatter = new Intl.DateTimeFormat("es-AR", {
   day: "2-digit",
@@ -33,7 +29,7 @@ const timeFormatter = new Intl.DateTimeFormat("es-AR", {
   minute: "2-digit",
 });
 
-export function SalesTable({ isLoading, sales }: Props) {
+export function SalesTable({ isLoading, sales }: SalesTableProps) {
   const router = useRouter();
   const [expandedSales, setExpandedSales] = useState<Set<string>>(new Set());
 

@@ -9,8 +9,10 @@ import {
   PaymentMethod,
   CartItem,
   Channel,
+  NewSaleProductsPageKey,
+  NewSaleProductsPageResponse,
   channelLabels,
-} from "@/lib/types";
+} from "@/interfaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,17 +45,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 const supabase = createClient();
 const PRODUCTS_PAGE_SIZE = 10;
 
-type ProductsPageKey = ["new-sale-products", number, string];
-type ProductsPageResponse = {
-  products: Product[];
-  count: number;
-};
 
 const fetchProductsPage = async ([
   ,
   pageIndex,
   search,
-]: ProductsPageKey): Promise<ProductsPageResponse> => {
+]: NewSaleProductsPageKey): Promise<NewSaleProductsPageResponse> => {
   const from = pageIndex * PRODUCTS_PAGE_SIZE;
   const to = from + PRODUCTS_PAGE_SIZE - 1;
   const searchTerm = search.trim().replace(/[%,]/g, "");
@@ -98,9 +95,9 @@ export default function NewSalePage() {
     isValidating: productsValidating,
     size: productsPageSize,
     setSize: setProductsPageSize,
-  } = useSWRInfinite<ProductsPageResponse>((pageIndex, previousPageData) => {
+  } = useSWRInfinite<NewSaleProductsPageResponse>((pageIndex, previousPageData) => {
     if (previousPageData && previousPageData.products.length === 0) return null;
-    return ["new-sale-products", pageIndex, search] as ProductsPageKey;
+    return ["new-sale-products", pageIndex, search] as NewSaleProductsPageKey;
   }, fetchProductsPage);
   const { data: paymentMethods } = useSWR<PaymentMethod[]>(
     "payment_methods",

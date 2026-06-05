@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { User } from '@/lib/types'
+import type { User } from '@/interfaces'
 
 async function syncGoogleUser(profile: {
   email?: string | null

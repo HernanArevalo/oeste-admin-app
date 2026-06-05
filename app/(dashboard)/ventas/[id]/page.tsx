@@ -4,7 +4,7 @@ import { use, useState } from 'react'
 import Link from 'next/link'
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { Sale, SaleItem, SaleStatus, statusLabels, channelLabels, statusColors } from '@/lib/types'
+import { Sale, SaleItem, SaleStatus, statusLabels, channelLabels, statusColors } from '@/interfaces'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -140,7 +140,7 @@ Gracias por tu compra!`
   }
 
   const copyUploadLink = () => {
-    const link = `${window.location.origin}/subir-comprobante/${id}`
+    const link = `${window.location.origin}/ventas/${id}/comprobante`
     navigator.clipboard.writeText(link)
     setCopied(true)
     toast.success('Link copiado al portapapeles')
@@ -425,7 +425,7 @@ Gracias por tu compra!`
                   <Button
                     variant="link"
                     size="sm"
-                    className="mt-2"
+                    className="mt-2 cursor-pointer"
                     onClick={copyUploadLink}
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react'
 
 import useSWR, { mutate } from 'swr'
 import { createClient } from '@/lib/supabase/client'
-import { User } from '@/lib/types'
+import { User, UserRowState } from '@/interfaces'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,10 +42,6 @@ import { useRouter } from 'next/navigation'
 
 const supabase = createClient()
 
-type UserRowState = User & {
-  isDirty: boolean
-  originalData: User
-}
 
 const roles = [
   { id: 'ADMIN', name: 'Admin' },
