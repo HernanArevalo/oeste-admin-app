@@ -1,0 +1,53 @@
+[
+    {
+        "order": {
+            "number": "4315",
+            "paymentMethod": "Mercado Pago",
+            "paymentStatus": "Finalizado",
+            "shippingMethod": "Correo Argentino",
+            "subtotal": 187700.9,
+            "shippingCost": 12371,
+            "total": 200071,
+            "products": [
+                {
+                    "quantity": 1,
+                    "title": "Clausen caramelo - Cristal",
+                    "price": 61900.9
+                },
+                {
+                    "quantity": 1,
+                    "title": "Copenhague Negro - Cristal",
+                    "price": 62900
+                },
+                {
+                    "quantity": 1,
+                    "title": "Copenhague carey - Cristal",
+                    "price": 62900
+                }
+            ]
+        },
+        "customer": {
+            "firstName": "Valeria",
+            "lastName": "Veliz",
+            "fullName": "Valeria Veliz",
+            "email": "valeriaveliz80@gmail.com",
+            "phone": "543816136297",
+            "dni": "27962256"
+        },
+        "shippingAddress": {
+            "street": "Virgen De La Merced",
+            "streetNumber": "540",
+            "floor": "5",
+            "apartment": "D",
+            "city": "San Miguel De Tucumán",
+            "province": "TUCUMAN",
+            "postalCode": "4000"
+        },
+        "metadata": {
+            "gmailMessageId": "19e55a303c960039",
+            "threadId": "19e4cd9d86007541",
+            "subject": "Fwd: Tienes una nueva orden #4315",
+            "date": "2026-05-23T16:20:02.000Z"
+        }
+    }
+]
