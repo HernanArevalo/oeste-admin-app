@@ -236,7 +236,7 @@ export async function POST(request: NextRequest) {
           payment_method_id: paymentMethod.id,
           subtotal: saleInput.order.subtotal,
           discount,
-          total: saleInput.order.total,
+          total: saleInput.order.shippingCost? saleInput.order.total - saleInput.order.shippingCost : saleInput.order.total,
           is_paid: isPaid(saleInput.order.paymentStatus),
         })
         .select("*")
