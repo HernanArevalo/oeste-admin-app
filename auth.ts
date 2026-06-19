@@ -79,7 +79,15 @@ async function getUserByEmail(email?: string | null) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google],
+  providers: [Google({
+  authorization: {
+    params: {
+      prompt: "select_account",
+      access_type: "offline",
+      response_type: "code",
+    },
+  },
+})],
   session: {
     strategy: 'jwt',
   },
