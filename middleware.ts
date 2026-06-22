@@ -9,6 +9,13 @@ export default auth((request) => {
   const isLoginRoute = pathname === '/login'
   const isUnauthorizedRoute = pathname === '/unauthorized'
 
+   if (
+    pathname.startsWith('/ventas/') &&
+    pathname.endsWith('/comprobante')
+  ) {
+    return NextResponse.next()
+  }
+
   if (!session?.user) {
     if (isLoginRoute) return NextResponse.next()
 
