@@ -48,16 +48,51 @@ export interface Sale {
   status: SaleStatus
   tracking_sent: boolean
   notes: string | null
+
   payment_method_id: string
   payment_method?: PaymentMethod
+
   subtotal: number
   discount: number
   total: number
+
   receipt_image_url: string | null
   receipt_uploaded_at: string | null
+
   created_at: string
-  items?: SaleItem[]
+
   is_paid: boolean
+
+  seller_id: string | null
+  seller_name: string | null
+
+  customer: SaleCustomer | null
+
+  shipping: SaleShipping | null
+
+  items?: SaleItem[]
+}
+
+export interface SaleCustomer {
+  firstName: string
+  lastName: string
+  fullName: string
+  email: string
+  phone: string
+  dni: string
+}
+
+export interface SaleShipping {
+  type: "CORREO" | "PRESENTIAL" | string
+  mode: "SUCURSAL" | null
+  cost: string | number | null
+  carrier: string | null
+  branch: {
+    name: string | null
+    address: string | null
+    hours: string | null
+  } | null
+  address: string | null
 }
 
 export interface SaleItem {

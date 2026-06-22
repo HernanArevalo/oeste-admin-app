@@ -27,49 +27,66 @@ import type { Sale, UploadReceiptPageProps } from "@/interfaces";
 import { createClient } from "@/lib/supabase/client";
 import useSWR from "swr";
 
-
 type SaleNotes = {
   customer?: {
-    firstName?: string | null
-    lastName?: string | null
-    fullName?: string | null
-    email?: string | null
-    phone?: string | null
-    dni?: string | null
-  } | null
-  shipping?: Record<string, unknown> | null
-  shippingCost?: number | null
-}
+    firstName?: string | null;
+    lastName?: string | null;
+    fullName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    dni?: string | null;
+  } | null;
+  shipping?: Record<string, unknown> | null;
+  shippingCost?: number | null;
+};
 
 function formatPrice(value: number) {
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
     maximumFractionDigits: 0,
-  }).format(value)
+  }).format(value);
+}
+
+type ShippingType = "PRESENTIAL" | "CADETE" | "CORREO";
+
+function parseShippingType(type: ShippingType | string | null): string {
+  switch (type) {
+    case "PRESENTIAL":
+      return "Presencial";
+
+    case "CADETE":
+      return "Cadete";
+
+    case "CORREO":
+      return "Correo";
+
+    default:
+      return "-";
+  }
 }
 
 function parseSaleNotes(notes?: string | null): SaleNotes | null {
-  if (!notes) return null
+  if (!notes) return null;
 
   try {
-    return JSON.parse(notes) as SaleNotes
+    return JSON.parse(notes) as SaleNotes;
   } catch {
-    return null
+    return null;
   }
 }
 
 function getCustomerName(customer?: SaleNotes["customer"]) {
-  if (!customer) return "No informado"
+  if (!customer) return "-";
   return (
     customer.fullName ||
     [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
-    "No informado"
-  )
+    "-"
+  );
 }
 
 function getShippingMethod(shipping?: SaleNotes["shipping"]) {
-  if (!shipping) return "No informado"
+  if (!shipping) return "-";
 
   const method =
     shipping.method ||
@@ -78,27 +95,29 @@ function getShippingMethod(shipping?: SaleNotes["shipping"]) {
     shipping.shipping_method ||
     shipping.name ||
     shipping.type ||
-    shipping.option
+    shipping.option;
 
-  return typeof method === "string" && method.trim() ? method : "No informado"
+  return typeof method === "string" && method.trim() ? method : "No informado";
 }
 
-const supabase = createClient()
+const supabase = createClient();
 
 const fetcher = async (id: string) => {
   const { data: sale, error: saleError } = await supabase
-    .from('sales')
-    .select('*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))')
-    .eq('id', id)
-    .single()
+    .from("sales")
+    .select(
+      "*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))",
+    )
+    .eq("id", id)
+    .single();
 
-  if (saleError) throw saleError
-  return { ...sale } as Sale 
-}
+  if (saleError) throw saleError;
+  return { ...sale } as Sale;
+};
 
 export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
   const { id } = use(params);
-  const { data: sale, isLoading } = useSWR(id, fetcher)
+  const { data: sale, isLoading } = useSWR(id, fetcher);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -119,6 +138,8 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
       reader.readAsDataURL(selectedFile);
     }
   }, []);
+
+  console.log({ sale });
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -155,16 +176,16 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
       }
 
       const { error: updateError } = await supabase
-        .from('sales')
+        .from("sales")
         .update({
           receipt_image_url: data.url,
           receipt_uploaded_at: new Date().toISOString(),
         })
-        .eq('id', id)
-  
+        .eq("id", id);
+
       if (updateError) {
-        console.error('Error updating sale:', updateError)
-        throw new Error('Error al actualizar la venta')
+        console.error("Error updating sale:", updateError);
+        throw new Error("Error al actualizar la venta");
       }
       setSuccess(true);
     } catch (err) {
@@ -217,7 +238,7 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
           </div>
           <CardTitle className="text-zinc-100">Subir Comprobante</CardTitle>
           <CardDescription className="text-zinc-400">
-            Sube una foto de tu comprobante de pago para confirmar tu pedido
+            Subí una foto de tu comprobante de pago para confirmar tu pedido
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -332,17 +353,17 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
 }
 
 function SaleSummary({ sale }: { sale: Sale }) {
-  const notes = parseSaleNotes(sale.notes)
-  const customer = notes?.customer
-  const shippingMethod = getShippingMethod(notes?.shipping)
+  const notes = parseSaleNotes(sale.notes);
+  const customer = notes?.customer;
+  const shippingMethod = getShippingMethod(notes?.shipping);
 
   return (
     <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-wide text-zinc-500">Pedido</p>
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Venta</p>
           <h3 className="text-lg font-semibold text-zinc-100">
-            {sale.order_number ? `#${sale.order_number}` : "Sin número"}
+            {sale.order_number ? `#${sale.order_number}` : "-"}
           </h3>
         </div>
         <div className="rounded-full bg-zinc-800 p-2">
@@ -351,9 +372,22 @@ function SaleSummary({ sale }: { sale: Sale }) {
       </div>
 
       <div className="grid gap-3 text-sm">
-        <InfoRow icon={User} label="Cliente" value={getCustomerName(customer)} />
-        <InfoRow icon={CreditCard} label="Método de pago" value={sale.payment_method?.name ?? "No informado"} />
-        <InfoRow icon={Truck} label="Método de envío" value={shippingMethod} />
+        <InfoRow
+          icon={User}
+          label="Cliente"
+          value={sale.customer?.fullName ?? "-"}
+        />
+        <InfoRow
+          icon={CreditCard}
+          label="Método de pago"
+          value={sale.payment_method?.name ?? "-"}
+        />
+        <InfoRow
+          icon={Truck}
+          label="Método de entrega"
+          value={parseShippingType(sale.shipping?.type || null)}
+          className={"capitalize"}
+        />
       </div>
 
       <div className="border-t border-zinc-800 pt-4">
@@ -374,7 +408,9 @@ function SaleSummary({ sale }: { sale: Sale }) {
                     {item.quantity} x {formatPrice(Number(item.unit_price))}
                   </p>
                 </div>
-                <span className="shrink-0 text-zinc-200">{formatPrice(Number(item.total))}</span>
+                <span className="shrink-0 text-zinc-200">
+                  {formatPrice(Number(item.total))}
+                </span>
               </div>
             ))
           ) : (
@@ -383,30 +419,51 @@ function SaleSummary({ sale }: { sale: Sale }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-zinc-800 pt-4 text-base font-semibold text-zinc-100">
-        <span>Total final</span>
-        <span>{formatPrice(Number(sale.total))}</span>
+      <div className="flex flex-col mt-6 space-y-2 items-center justify-between border-t border-zinc-800 pt-4 text-base font-semibold text-zinc-100">
+          <div className="flex justify-between text-sm w-full">
+            <span className="text-muted-foreground">Envio</span>
+            <span>{formatPrice(Number(sale.shipping?.cost) || 0)}</span>
+          </div>
+      </div>
+
+      <div className="flex flex-col mt-6 space-y-2 items-center justify-between border-t border-zinc-800 pt-4 text-base font-semibold text-zinc-100">
+          <div className="flex justify-between text-sm w-full">
+            <span className="text-muted-foreground">Subtotal</span>
+            <span>{formatPrice(sale.subtotal)}</span>
+          </div>
+          {sale.discount > 0 && (
+            <div className="flex justify-between text-sm text-emerald-400 w-full">
+              <span>Descuento</span>
+              <span>-{formatPrice(sale.discount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between text-lg font-semibold pt-2 border-t border-border w-full">
+            <span>Total</span>
+            <span>{formatPrice(sale.total)}</span>
+          </div>
       </div>
     </div>
-  )
+  );
 }
 
 function InfoRow({
   icon: Icon,
   label,
   value,
+  className,
 }: {
-  icon: typeof User
-  label: string
-  value: string
+  icon: typeof User;
+  label: string;
+  value: string;
+  className?: string;
 }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 ">
       <Icon className="h-4 w-4 shrink-0 text-zinc-500" />
       <div className="min-w-0">
         <p className="text-xs text-zinc-500">{label}</p>
         <p className="truncate text-zinc-200">{value}</p>
       </div>
     </div>
-  )
+  );
 }
