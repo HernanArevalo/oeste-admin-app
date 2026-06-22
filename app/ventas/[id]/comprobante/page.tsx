@@ -8,6 +8,11 @@ import {
   AlertCircle,
   ImageIcon,
   Loader2,
+  Package,
+  Receipt,
+  Truck,
+  User,
+  CreditCard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,22 +24,63 @@ import {
 } from "@/components/ui/card";
 import Image from "next/image";
 import type { Sale, UploadReceiptPageProps } from "@/interfaces";
-import { NextResponse } from "next/dist/server/web/spec-extension/response";
 import { createClient } from "@/lib/supabase/client";
 import useSWR from "swr";
 
-const getSale = async (saleId: string) => {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('sales')
-    .select('id')
-    .eq('id', saleId)
-    .single()
-  if (error) {
-    console.error('Error fetching sale:', error)
-    throw new Error('Venta no encontrada')
+
+type SaleNotes = {
+  customer?: {
+    firstName?: string | null
+    lastName?: string | null
+    fullName?: string | null
+    email?: string | null
+    phone?: string | null
+    dni?: string | null
+  } | null
+  shipping?: Record<string, unknown> | null
+  shippingCost?: number | null
+}
+
+function formatPrice(value: number) {
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency: "ARS",
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function parseSaleNotes(notes?: string | null): SaleNotes | null {
+  if (!notes) return null
+
+  try {
+    return JSON.parse(notes) as SaleNotes
+  } catch {
+    return null
   }
-  return data
+}
+
+function getCustomerName(customer?: SaleNotes["customer"]) {
+  if (!customer) return "No informado"
+  return (
+    customer.fullName ||
+    [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
+    "No informado"
+  )
+}
+
+function getShippingMethod(shipping?: SaleNotes["shipping"]) {
+  if (!shipping) return "No informado"
+
+  const method =
+    shipping.method ||
+    shipping.methodName ||
+    shipping.shippingMethod ||
+    shipping.shipping_method ||
+    shipping.name ||
+    shipping.type ||
+    shipping.option
+
+  return typeof method === "string" && method.trim() ? method : "No informado"
 }
 
 const supabase = createClient()
@@ -42,7 +88,7 @@ const supabase = createClient()
 const fetcher = async (id: string) => {
   const { data: sale, error: saleError } = await supabase
     .from('sales')
-    .select('*, payment_method:payment_methods(*)')
+    .select('*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))')
     .eq('id', id)
     .single()
 
@@ -58,8 +104,6 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
   const [uploading, setUploading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  console.log("Sale data:", sale)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const selectedFile = acceptedFiles[0];
@@ -120,7 +164,7 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
   
       if (updateError) {
         console.error('Error updating sale:', updateError)
-        return NextResponse.json({ error: 'Error al actualizar la venta' }, { status: 500 })
+        throw new Error('Error al actualizar la venta')
       }
       setSuccess(true);
     } catch (err) {
@@ -177,6 +221,15 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 text-sm text-zinc-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando datos de la venta...
+            </div>
+          ) : sale ? (
+            <SaleSummary sale={sale} />
+          ) : null}
+
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -276,4 +329,84 @@ export default function UploadReceiptPage({ params }: UploadReceiptPageProps) {
       </Card>
     </div>
   );
+}
+
+function SaleSummary({ sale }: { sale: Sale }) {
+  const notes = parseSaleNotes(sale.notes)
+  const customer = notes?.customer
+  const shippingMethod = getShippingMethod(notes?.shipping)
+
+  return (
+    <div className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-zinc-500">Pedido</p>
+          <h3 className="text-lg font-semibold text-zinc-100">
+            {sale.order_number ? `#${sale.order_number}` : "Sin número"}
+          </h3>
+        </div>
+        <div className="rounded-full bg-zinc-800 p-2">
+          <Receipt className="h-5 w-5 text-zinc-300" />
+        </div>
+      </div>
+
+      <div className="grid gap-3 text-sm">
+        <InfoRow icon={User} label="Cliente" value={getCustomerName(customer)} />
+        <InfoRow icon={CreditCard} label="Método de pago" value={sale.payment_method?.name ?? "No informado"} />
+        <InfoRow icon={Truck} label="Método de envío" value={shippingMethod} />
+      </div>
+
+      <div className="border-t border-zinc-800 pt-4">
+        <div className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-200">
+          <Package className="h-4 w-4" />
+          Productos
+        </div>
+        <div className="space-y-2">
+          {sale.items && sale.items.length > 0 ? (
+            sale.items.map((item) => (
+              <div key={item.id} className="flex justify-between gap-3 text-sm">
+                <div className="min-w-0 text-zinc-300">
+                  <p className="truncate">
+                    {item.product?.name ?? "Producto"}
+                    {item.product?.variant ? ` - ${item.product.variant}` : ""}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {item.quantity} x {formatPrice(Number(item.unit_price))}
+                  </p>
+                </div>
+                <span className="shrink-0 text-zinc-200">{formatPrice(Number(item.total))}</span>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-zinc-500">No hay productos cargados.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-zinc-800 pt-4 text-base font-semibold text-zinc-100">
+        <span>Total final</span>
+        <span>{formatPrice(Number(sale.total))}</span>
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof User
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Icon className="h-4 w-4 shrink-0 text-zinc-500" />
+      <div className="min-w-0">
+        <p className="text-xs text-zinc-500">{label}</p>
+        <p className="truncate text-zinc-200">{value}</p>
+      </div>
+    </div>
+  )
 }

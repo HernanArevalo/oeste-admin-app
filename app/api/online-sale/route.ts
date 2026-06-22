@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
           order_number: Number.isFinite(orderNumber) ? orderNumber : null,
           point_of_sale: "WEB",
           status: "PREPARING",
-          // notes: buildNotes(saleInput),
+          notes: buildNotes(saleInput),
           payment_method_id: paymentMethod.id,
           subtotal: saleInput.order.subtotal,
           discount,
