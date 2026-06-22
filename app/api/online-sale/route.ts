@@ -236,8 +236,13 @@ export async function POST(request: NextRequest) {
           payment_method_id: paymentMethod.id,
           subtotal: saleInput.order.subtotal,
           discount,
-          total: saleInput.order.shippingCost? saleInput.order.total - saleInput.order.shippingCost : saleInput.order.total,
+          total: saleInput.order.shippingCost
+            ? saleInput.order.total - saleInput.order.shippingCost
+            : saleInput.order.total,
           is_paid: isPaid(saleInput.order.paymentStatus),
+
+          customer: saleInput.customer,
+          shipping: saleInput.shipping,
         })
         .select("*")
         .single<Sale>();
@@ -260,9 +265,7 @@ export async function POST(request: NextRequest) {
 
       for (const { input, product } of matchedItems) {
         if (!product) {
-          return [
-            `Product with SKU ${input.SKU ?? 'undefined'} was not found`,
-          ]
+          return [`Product with SKU ${input.SKU ?? "undefined"} was not found`];
         }
 
         const { data: updatedProducts, error: stockError } = await supabase
