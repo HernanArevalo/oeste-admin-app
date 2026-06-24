@@ -42,7 +42,7 @@ import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
 import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { capitalize, getOptimizedCloudinaryImage } from '@/utils'
+import { capitalize, exportToExcel, getOptimizedCloudinaryImage } from '@/utils'
 import Image from 'next/image'
 
 const supabase = createClient()
@@ -129,15 +129,7 @@ const fetchProductsPage = async ([, pageIndex, search, categoryFilter, showInact
   }
 }
 
-const fetchAllProductsForExport = async () => {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*, category:categories(*)')
-    .order('name')
 
-  if (error) throw error
-  return data as Product[]
-}
 
 const fetchExistingProductKeys = async () => {
   const { data, error } = await supabase
@@ -521,37 +513,6 @@ export default function ProductsPage() {
   const productToDeleteName = productToDelete
     ? `"${productToDelete.name}${productToDelete.variant ? ` - ${productToDelete.variant}` : ''}"`
     : 'este producto'
-
-  const exportToExcel = async () => {
-    try {
-      const allProducts = await fetchAllProductsForExport()
-      if (!allProducts.length) return
-
-      const data = allProducts.map((p) => ({
-        Nombre: p.name,
-        Variante: p.variant || '',
-        Precio: p.price,
-        Stock: p.stock,
-        Categoria: p.category?.name || '',
-        Activo: p.is_active ? 'Si' : 'No',
-      }))
-
-      // Create CSV content
-      const headers = Object.keys(data[0]).join(',')
-      const rows = data.map((row) => Object.values(row).join(','))
-      const csv = [headers, ...rows].join('\n')
-
-      // Download
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = `productos_${new Date().toISOString().split('T')[0]}.csv`
-      link.click()
-    } catch (error) {
-      console.error('Error exporting products:', error)
-      toast.error('Error al exportar productos')
-    }
-  }
 
   return (
     <>
