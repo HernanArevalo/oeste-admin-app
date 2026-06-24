@@ -28,6 +28,8 @@ export interface Product {
   category?: Category | null
   created_at: string
   updated_at: string
+  empretienda_product_id: number | null
+  empretienda_stock_id: number | null
 }
 
 export interface User {

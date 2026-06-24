@@ -21,16 +21,18 @@ export const exportToExcel = async () => {
     if (!allProducts.length) return;
 
     const data = allProducts.map((p) => ({
-      name: p.name,
       id: p.id,
+      name: p.name,
       variant: p.variant || "",
-      price: p.price,
       stock: p.stock,
+      price: p.price,
       category: p.category?.name || "",
       is_active: p.is_active ? "Si" : "No",
       image_url: p.image_url || "",
       created_at: p.created_at,
       updated_at: p.updated_at,
+      empretienda_product_id: p.empretienda_product_id || "",
+      empretienda_stock_id: p.empretienda_stock_id || ""
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(data);
