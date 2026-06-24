@@ -1,8 +1,9 @@
+import * as XLSX from "xlsx";
 import { Product } from "@/interfaces";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
-const supabase = createClient()
+const supabase = createClient();
 
 const fetchAllProductsForExport = async () => {
   const { data, error } = await supabase
@@ -32,17 +33,15 @@ export const exportToExcel = async () => {
       updated_at: p.updated_at,
     }));
 
-    // Create CSV content
-    const headers = Object.keys(data[0]).join(",");
-    const rows = data.map((row) => Object.values(row).join(","));
-    const csv = [headers, ...rows].join("\n");
+    const worksheet = XLSX.utils.json_to_sheet(data);
 
-    // Download
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `productos_${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "products");
+
+    XLSX.writeFile(
+      workbook,
+      `productos_${new Date().toISOString().split("T")[0]}.xlsx`
+    );
   } catch (error) {
     console.error("Error exporting products:", error);
     toast.error("Error al exportar productos");
