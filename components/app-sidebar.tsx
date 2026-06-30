@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Package, ShoppingCart, ListOrdered, Tags, CreditCard, Menu, Users } from 'lucide-react'
+import { Package, ShoppingCart, ListOrdered, Tags, CreditCard, Menu, Users, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Session } from 'next-auth'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,11 @@ const navigation = [
   { name: 'Productos',
     href: '/productos',
     icon: Package,
+    totalAccess: true
+  },
+  { name: 'Analítica',
+    href: '/stats',
+    icon: BarChart3,
     totalAccess: true
   },
   { name: 'Categorias',
