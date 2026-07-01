@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronRight } from "lucide-react";
+import { Bike, ChevronRight, Globe, Home, MessageSquare, Store, Truck } from "lucide-react";
 import { formatPrice } from "@/utils";
 import { SalesTableProps, statusLabels, channelLabels, statusColors } from "@/interfaces";
 import { cn } from "@/lib/utils";
@@ -45,18 +45,21 @@ export function SalesTable({ isLoading, sales }: SalesTableProps) {
     });
   };
 
+    console.log(sales[0])
+
   return (
     <div className="rounded-lg border border-border bg-card">
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead className="text-center w-10"></TableHead>
-            <TableHead className="text-left w-18">Fecha</TableHead>
-            <TableHead className="text-center w-14">ID</TableHead>
-            <TableHead className="text-center w-14">Canal</TableHead>
-            <TableHead className="text-center w-20">Método de Pago</TableHead>
-            <TableHead className="text-center w-24">Estado</TableHead>
-            <TableHead className="text-right w-12">Total</TableHead>
+            <TableHead className="text-center w-12"></TableHead>
+            <TableHead className="text-left w-20">Fecha</TableHead>
+            <TableHead className="text-center w-20">ID</TableHead>
+            <TableHead className="text-center w-20">Canal</TableHead>
+            <TableHead className="text-center w-fit">Método de Pago</TableHead>
+            <TableHead className="text-center w-fit">Entrega</TableHead>
+            <TableHead className="text-center w-fit">Estado</TableHead>
+            <TableHead className="text-right w-24">Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -129,12 +132,23 @@ export function SalesTable({ isLoading, sales }: SalesTableProps) {
                           {sale.id.slice(0, 8)}
                         </p>
                         <p className="font-mono text-sm text-foreground font-bold">
-                          {sale.order_number != null ? `#${sale.order_number}` : "-"}
+                          {sale.order_number != null ? `#${sale.order_number}` : ""}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell className="text-center w-fit">
                       <Badge variant="outline">
+                        { channelLabels[sale.point_of_sale] == "Local"?
+                        <Store color="blue" /> 
+                        :
+                        channelLabels[sale.point_of_sale] == "Web"?
+                        <Globe color="green" />
+                        :
+                        channelLabels[sale.point_of_sale] == "Otro"?
+                        <MessageSquare color="purple" />
+                        :
+                        ""
+                      }
                         {channelLabels[sale.point_of_sale]}
                       </Badge>
                     </TableCell>
@@ -149,6 +163,24 @@ export function SalesTable({ isLoading, sales }: SalesTableProps) {
                                           "truncate"
                                         )} title={sale.payment_method?.name ?? "-"}>
                         {sale.payment_method?.name ?? "-"}
+                      </Badge>
+                    </TableCell>
+                                        <TableCell className="text-center">
+                      <Badge className={
+                                      cn(
+                                        "border", 
+                                        "bg-gray text--400 border-gray-500/30",
+                                        "truncate"
+                                        )} title={sale.payment_method?.name ?? "-"}>
+                        { sale.shipping?.type == "CORREO"?
+                        <Truck color="yellow"/> 
+                        :
+                        sale.shipping?.type == "CADETE"?
+                        <Bike color="red"/>
+                        :
+                        <Home color="blue"/>
+                      }
+                        {(sale.shipping?.type !== "PRESENTIAL" && sale.shipping !== null) ? sale.shipping?.type : "PRESENCIAL"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center w-fit">

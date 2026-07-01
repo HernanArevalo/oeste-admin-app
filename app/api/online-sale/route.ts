@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
         sale_id: sale.id,
         product_id: product?.id,
         quantity: input.quantity,
-        unit_price: Number(product?.price ?? input.price),
+        unit_price: Number(input.price ?? product?.price ),
         total: Number(product?.price ?? input.price) * input.quantity,
       }));
 
