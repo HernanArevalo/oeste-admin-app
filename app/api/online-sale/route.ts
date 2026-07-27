@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (existingSale) {
-        return jsonError(`Order ${orderNumber} already exists`, 409);
+        return jsonError(`Order ${orderNumber} already exists`, 409, {data: existingSale});
       }
 
       const { data: sale, error: saleError } = await supabase
