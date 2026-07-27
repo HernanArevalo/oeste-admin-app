@@ -312,29 +312,34 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 },
     );
-  } catch (error) {
-    // Revertimos solo las cantidades exactas que se alcanzaron a descontar si ocurrió un error fatal
+} catch (error) {
+    // Revertimos solo las deducciones reales de stock si algo falla a mitad de camino
     if (updatedStockDeductions.length > 0) {
       await Promise.all(
-        updatedStockDeductions.map((item) =>
-          supabase.rpc("increment_stock", {
-            p_id: item.productId,
-            p_quantity: item.quantity,
-          }).catch(async () => {
-            // Fallback en caso de no tener la función RPC en la BD:
+        updatedStockDeductions.map(async (item) => {
+          try {
+            const { error: rpcError } = await supabase.rpc("increment_stock", {
+              p_id: item.productId,
+              p_quantity: item.quantity,
+            });
+
+            if (rpcError) throw rpcError;
+          } catch {
+            // Fallback si no existe la función RPC en la BD
             const { data: prod } = await supabase
               .from("products")
               .select("stock")
               .eq("id", item.productId)
               .single();
+
             if (prod) {
               await supabase
                 .from("products")
-                .update({ stock: prod.stock + item.quantity })
+                .update({ stock: Number(prod.stock ?? 0) + item.quantity })
                 .eq("id", item.productId);
             }
-          })
-        ),
+          }
+        }),
       );
     }
 
