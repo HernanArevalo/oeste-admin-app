@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     : [validation.data];
   const supabase = createAdminClient();
   const createdSaleIds: string[] = [];
-  const updatedStockItems: { productId: string; stock: number }[] = [];
+  const updatedStockDeductions: { productId: string; quantity: number }[] = [];
 
   try {
 
@@ -195,13 +195,10 @@ export async function POST(request: NextRequest) {
         input: item,
         product: item.SKU ? productsById.get(item.SKU) : undefined,
       }));
+
+      // Validamos únicamente que los productos existan en la base de datos (se omitió la validación de stock)
       const invalidItems = matchedItems.flatMap(({ input, product }) => {
         if (!product) return [`Product ${input.title} was not found`];
-        if (product.stock < input.quantity) {
-          return [
-            `Product ${getProductTitle(product)} has insufficient stock (${product.stock})`,
-          ];
-        }
         return [];
       });
 
@@ -223,16 +220,18 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (existingSale) {
-        return jsonError(`Order ${orderNumber} already exists`, 409, {data: existingSale});
+        return jsonError(`Order ${orderNumber} already exists`, 409, {
+          data: existingSale,
+        });
       }
 
+      // 1. Creamos la venta normalmente
       const { data: sale, error: saleError } = await supabase
         .from("sales")
         .insert({
           order_number: Number.isFinite(orderNumber) ? orderNumber : null,
           point_of_sale: "WEB",
           status: "PREPARING",
-          // notes: buildNotes(saleInput),
           payment_method_id: paymentMethod.id,
           subtotal: saleInput.order.subtotal,
           discount,
@@ -240,7 +239,6 @@ export async function POST(request: NextRequest) {
             ? saleInput.order.total - saleInput.order.shippingCost
             : saleInput.order.total,
           is_paid: isPaid(saleInput.order.paymentStatus),
-
           customer: saleInput.customer,
           shipping: saleInput.shipping,
         })
@@ -250,41 +248,48 @@ export async function POST(request: NextRequest) {
       if (saleError) throw saleError;
       createdSaleIds.push(sale.id);
 
-      const saleItems = matchedItems.map(({ input, product }) => ({
-        sale_id: sale.id,
-        product_id: product?.id,
-        quantity: input.quantity,
-        unit_price: Number(input.price ?? product?.price ),
-        total: Number(product?.price ?? input.price) * input.quantity,
-      }));
+      // 2. Insertamos los items de la venta (corregido el bug de cálculo de unit_price/total)
+      const saleItems = matchedItems.map(({ input, product }) => {
+        const unitPrice = Number(input.price ?? product?.price ?? 0);
+        return {
+          sale_id: sale.id,
+          product_id: product?.id,
+          quantity: input.quantity,
+          unit_price: unitPrice,
+          total: unitPrice * input.quantity,
+        };
+      });
 
       const { error: saleItemsError } = await supabase
         .from("sale_items")
         .insert(saleItems);
       if (saleItemsError) throw saleItemsError;
 
+      // 3. Actualizamos el stock solo si hay disponibilidad suficiente
       for (const { input, product } of matchedItems) {
-        if (!product) {
-          return [`Product with SKU ${input.SKU ?? "undefined"} was not found`];
+        if (!product) continue;
+
+        // Solo descontamos si hay stock suficiente en BD/instancia actual
+        if (product.stock >= input.quantity) {
+          const { data: updatedProducts, error: stockError } = await supabase
+            .from("products")
+            .update({ stock: product.stock - input.quantity })
+            .eq("id", product.id)
+            .gte("stock", input.quantity)
+            .select("id");
+
+          if (stockError) throw stockError;
+
+          // Si la consulta fue exitosa y descontó el stock
+          if (updatedProducts && updatedProducts.length > 0) {
+            updatedStockDeductions.push({
+              productId: product.id,
+              quantity: input.quantity,
+            });
+            product.stock -= input.quantity;
+          }
         }
-
-        const { data: updatedProducts, error: stockError } = await supabase
-          .from("products")
-          .update({ stock: product.stock - input.quantity })
-          .eq("id", product.id)
-          .gte("stock", input.quantity)
-          .select("id");
-
-        if (stockError) throw stockError;
-        if (!updatedProducts || updatedProducts.length === 0) {
-          throw new Error(`Insufficient stock for product ${product.id}`);
-        }
-
-        updatedStockItems.push({
-          productId: product.id,
-          stock: product.stock,
-        });
-        product.stock -= input.quantity;
+        // Si no hay stock suficiente, la venta se crea igual y el stock del producto permanece sin cambios.
       }
 
       const { data: saleWithRelations, error: fetchSaleError } = await supabase
@@ -308,14 +313,30 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    await Promise.all(
-      updatedStockItems.map((item) =>
-        supabase
-          .from("products")
-          .update({ stock: item.stock })
-          .eq("id", item.productId),
-      ),
-    );
+    // Revertimos solo las cantidades exactas que se alcanzaron a descontar si ocurrió un error fatal
+    if (updatedStockDeductions.length > 0) {
+      await Promise.all(
+        updatedStockDeductions.map((item) =>
+          supabase.rpc("increment_stock", {
+            p_id: item.productId,
+            p_quantity: item.quantity,
+          }).catch(async () => {
+            // Fallback en caso de no tener la función RPC en la BD:
+            const { data: prod } = await supabase
+              .from("products")
+              .select("stock")
+              .eq("id", item.productId)
+              .single();
+            if (prod) {
+              await supabase
+                .from("products")
+                .update({ stock: prod.stock + item.quantity })
+                .eq("id", item.productId);
+            }
+          })
+        ),
+      );
+    }
 
     if (createdSaleIds.length > 0) {
       await supabase.from("sales").delete().in("id", createdSaleIds);
