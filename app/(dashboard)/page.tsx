@@ -34,17 +34,15 @@ import {
   ShoppingCart,
   Check as CheckIcon,
   AlertCircle,
-  MessageCircleMore,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { formatPrice, getOptimizedCloudinaryImage } from "@/utils";
+import { formatPrice } from "@/utils";
 import Image from "next/image";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const supabase = createClient();
 const PRODUCTS_PAGE_SIZE = 10;
-
 
 const fetchProductsPage = async ([
   ,
@@ -95,10 +93,15 @@ export default function NewSalePage() {
     isValidating: productsValidating,
     size: productsPageSize,
     setSize: setProductsPageSize,
-  } = useSWRInfinite<NewSaleProductsPageResponse>((pageIndex, previousPageData) => {
-    if (previousPageData && previousPageData.products.length === 0) return null;
-    return ["new-sale-products", pageIndex, search] as NewSaleProductsPageKey;
-  }, fetchProductsPage);
+  } = useSWRInfinite<NewSaleProductsPageResponse>(
+    (pageIndex, previousPageData) => {
+      if (previousPageData && previousPageData.products.length === 0)
+        return null;
+      return ["new-sale-products", pageIndex, search] as NewSaleProductsPageKey;
+    },
+    fetchProductsPage,
+  );
+
   const { data: paymentMethods } = useSWR<PaymentMethod[]>(
     "payment_methods",
     fetchPaymentMethods,
@@ -112,7 +115,8 @@ export default function NewSalePage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [isPaid, setIsPaid] = useState(true);
   const [isDelivered, setIsDelivered] = useState(true);
-  
+  const [noStockAllowed, setNoStockAllowed] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
@@ -121,6 +125,22 @@ export default function NewSalePage() {
       setPaymentMethodId(paymentMethods[0].id);
     }
   }, [paymentMethods, paymentMethodId]);
+
+  // Si se desactiva "noStockAllowed", limpiamos o ajustamos los ítems que superen el stock real
+  useEffect(() => {
+    if (!noStockAllowed) {
+      setCart((prev) =>
+        prev
+          .map((item) => {
+            if (item.quantity > item.product.stock) {
+              return { ...item, quantity: item.product.stock };
+            }
+            return item;
+          })
+          .filter((item) => item.quantity > 0),
+      );
+    }
+  }, [noStockAllowed]);
 
   const filteredProducts = useMemo(
     () => productsPages?.flatMap((page) => page.products) || [],
@@ -135,7 +155,7 @@ export default function NewSalePage() {
     if (
       !loadMoreElement ||
       !hasMoreProducts ||
-      productsLoading  ||
+      productsLoading ||
       isLoadingMoreProducts
     )
       return;
@@ -163,8 +183,6 @@ export default function NewSalePage() {
   );
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-
-
   const { subtotal, discount, total } = useMemo(() => {
     const sub = cart.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
@@ -179,7 +197,7 @@ export default function NewSalePage() {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stock) {
+        if (existing.quantity >= product.stock && !noStockAllowed) {
           toast.error("No hay suficiente stock");
           return prev;
         }
@@ -199,7 +217,7 @@ export default function NewSalePage() {
         .map((item) => {
           if (item.product.id !== productId) return item;
           const newQty = item.quantity + delta;
-          if (newQty > item.product.stock) {
+          if (delta > 0 && newQty > item.product.stock && !noStockAllowed) {
             toast.error("No hay suficiente stock");
             return item;
           }
@@ -211,6 +229,7 @@ export default function NewSalePage() {
 
   const removeFromCart = (productId: string) =>
     setCart((prev) => prev.filter((item) => item.product.id !== productId));
+
   const clearCart = () => {
     setCart([]);
     setNotes("");
@@ -220,7 +239,7 @@ export default function NewSalePage() {
   };
 
   const handleSubmit = async () => {
-    if (cart.length === 0) return toast.error("El carrito esta vacio");
+    if (cart.length === 0) return toast.error("El carrito está vacío");
     if (!paymentMethodId) return toast.error("Selecciona un método de pago");
     setIsSubmitting(true);
     try {
@@ -239,7 +258,9 @@ export default function NewSalePage() {
         })
         .select()
         .single();
+
       if (saleError) throw saleError;
+
       const saleItems = cart.map((item) => ({
         sale_id: sale.id,
         product_id: item.product.id,
@@ -247,17 +268,24 @@ export default function NewSalePage() {
         unit_price: item.product.price,
         total: item.product.price * item.quantity,
       }));
+
       const { error: itemsError } = await supabase
         .from("sale_items")
         .insert(saleItems);
       if (itemsError) throw itemsError;
+
+      // Descontamos stock únicamente de aquellos productos con disponibilidad suficiente
       for (const item of cart) {
-        const { error: stockError } = await supabase
-          .from("products")
-          .update({ stock: item.product.stock - item.quantity })
-          .eq("id", item.product.id);
-        if (stockError) throw stockError;
+        if (item.product.stock >= item.quantity) {
+          const { error: stockError } = await supabase
+            .from("products")
+            .update({ stock: item.product.stock - item.quantity })
+            .eq("id", item.product.id);
+
+          if (stockError) throw stockError;
+        }
       }
+
       toast.success("Venta registrada correctamente", {
         duration: 4000,
         position: "top-center",
@@ -293,18 +321,18 @@ export default function NewSalePage() {
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
               <ShoppingCart className="h-8 w-8 mb-2 opacity-50" />
-              <p className="text-sm">Carrito vacio</p>
+              <p className="text-sm">Carrito vacío</p>
             </div>
           ) : (
             cart.map((item) => (
               <div
                 key={item.product.id}
                 className="flex items-center gap-3 p-3 rounded-lg bg-secondary/50"
-              > 
+              >
                 <Image
                   width={54}
                   height={54}
-                  src={(item.product.image_url as string) || '/placeholder.jpg'}
+                  src={(item.product.image_url as string) || "/placeholder.jpg"}
                   alt={item.product.name}
                   className="w-14 h-14 rounded-md object-cover bg-muted/50"
                 />
@@ -361,17 +389,15 @@ export default function NewSalePage() {
               <Select
                 value={pointOfSale}
                 onValueChange={(v) => {
-                  console.log("Selected channel:", v);
-                  setPointOfSale(v as Channel)
-                  if (v == "LOCAL") {
-                      setIsPaid(true);
-                      setIsDelivered(true);
-                      setOrderNumber("");
-                    }else{
-                      setIsPaid(false);
-                      setIsDelivered(false);
-                    }
-                  
+                  setPointOfSale(v as Channel);
+                  if (v === "LOCAL") {
+                    setIsPaid(true);
+                    setIsDelivered(true);
+                    setOrderNumber("");
+                  } else {
+                    setIsPaid(false);
+                    setIsDelivered(false);
+                  }
                 }}
               >
                 <SelectTrigger className="w-full">
@@ -441,7 +467,7 @@ export default function NewSalePage() {
                   "data-[state=checked]:text-white",
                 )}
                 checked={isPaid}
-                onCheckedChange={(checked) => setIsPaid(checked === true)}  
+                onCheckedChange={(checked) => setIsPaid(checked === true)}
               />
             </div>
             <div className="flex flex-col items-center justify-between">
@@ -552,23 +578,45 @@ export default function NewSalePage() {
             </div>
           ) : (
             <>
+              <div className="flex flex-row gap-2 items-center justify-left mb-4">
+                <label
+                  className="text-xs text-muted-foreground block text-center cursor-pointer mb-1"
+                  htmlFor="no-stock-checkbox"
+                >
+                  Gafas sin stock
+                </label>
+                <Checkbox
+                  id="no-stock-checkbox"
+                  className={cn(
+                    "h-6 w-6 border-gray-400 opacity-80",
+                    "data-[state=checked]:bg-green-500",
+                    "data-[state=checked]:border-green-500",
+                    "data-[state=checked]:text-white",
+                  )}
+                  checked={noStockAllowed}
+                  onCheckedChange={(checked) =>
+                    setNoStockAllowed(checked === true)
+                  }
+                />
+              </div>
               <div className="grid grid-cols-2 xl:grid-cols-3 gap-3">
                 {filteredProducts.map((product) => {
                   const inCart = cart.find(
                     (item) => item.product.id === product.id,
                   );
+
                   return (
                     <button
                       key={product.id}
                       onClick={() => addToCart(product)}
                       className={cn(
                         "relative p-4 rounded-lg border text-left transition-all overflow-hidden",
-                        product.stock > 0
+                        product.stock > 0 || noStockAllowed
                           ? "bg-card hover:bg-accent/90 hover:border-foreground/20 cursor-pointer"
                           : "bg-card cursor-not-allowed opacity-30",
-                        inCart && product.stock > 0 && "ring-2 ring-primary",
+                        inCart && "ring-2 ring-primary",
                       )}
-                      disabled={product.stock === 0}
+                      disabled={product.stock === 0 && !noStockAllowed}
                     >
                       {inCart && (
                         <Badge className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center">
@@ -577,8 +625,8 @@ export default function NewSalePage() {
                       )}
                       <div className="mb-3 h-28 w-full overflow-hidden rounded-md bg-muted/40">
                         <Image
-                          width={400}
-                          height={400}
+                          width={200}
+                          height={200}
                           src={product.image_url || "/placeholder.jpg"}
                           alt={product.name}
                           className="h-full w-full object-cover"
@@ -597,7 +645,15 @@ export default function NewSalePage() {
                           <span className="text-lg font-semibold text-foreground">
                             {formatPrice(product.price)}
                           </span>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge
+                            variant={"outline"}
+                            className={cn(
+                              "text-xs font-semibold border bg-transparent",
+                              product.stock === 0
+                                ? "text-red-500 border-red-500"
+                                : "text-green-500 border-green-500",
+                            )}
+                          >
                             Stock: {product.stock}
                           </Badge>
                         </div>
