@@ -1,100 +1,147 @@
-'use client'
+"use client";
 
-import { useState, useMemo, useEffect, useRef } from 'react'
-import Link from 'next/link'
-import useSWRInfinite from 'swr/infinite'
-import { createClient } from '@/lib/supabase/client'
-import { Sale, SaleStatus, Channel, SalesPageKey, SalesPageResponse, statusLabels, channelLabels } from '@/interfaces'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { SalesTable } from '@/components/SalesTable'
-import { Search, Filter, PlusCircle } from 'lucide-react'
-import { formatPrice } from '@/utils'
+import { useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
+import useSWRInfinite from "swr/infinite";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Sale,
+  SaleStatus,
+  Channel,
+  SalesPageKey,
+  SalesPageResponse,
+  statusLabels,
+  channelLabels,
+} from "@/interfaces";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { SalesTable } from "@/components/SalesTable";
+import { Search, Filter, PlusCircle, Download } from "lucide-react";
+import { formatPrice } from "@/utils";
 
-const supabase = createClient()
-const SALES_PAGE_SIZE = 10
+const supabase = createClient();
+const SALES_PAGE_SIZE = 10;
 
-
-const fetchSalesPage = async ([, pageIndex, search, statusFilter, channelFilter]: SalesPageKey): Promise<SalesPageResponse> => {
-  const from = pageIndex * SALES_PAGE_SIZE
-  const to = from + SALES_PAGE_SIZE - 1
-  const searchTerm = search.trim()
+const fetchSalesPage = async ([
+  ,
+  pageIndex,
+  search,
+  statusFilter,
+  channelFilter,
+]: SalesPageKey): Promise<SalesPageResponse> => {
+  const from = pageIndex * SALES_PAGE_SIZE;
+  const to = from + SALES_PAGE_SIZE - 1;
+  const searchTerm = search.trim();
 
   let query = supabase
-    .from('sales')
-    .select('*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, to)
+    .from("sales")
+    .select(
+      "*, payment_method:payment_methods(*), items:sale_items(*, product:products(*))",
+      { count: "exact" },
+    )
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   if (searchTerm) {
-    query = query.or(`id.ilike.%${searchTerm}%,order_number::text.ilike.%${searchTerm}%`)
+    query = query.or(
+      `id.ilike.%${searchTerm}%,order_number::text.ilike.%${searchTerm}%`,
+    );
   }
 
-  if (statusFilter !== 'all') {
-    query = query.eq('status', statusFilter)
+  if (statusFilter !== "all") {
+    query = query.eq("status", statusFilter);
   }
 
-  if (channelFilter !== 'all') {
-    query = query.eq('point_of_sale', channelFilter)
+  if (channelFilter !== "all") {
+    query = query.eq("point_of_sale", channelFilter);
   }
 
-  const { data, error, count } = await query
-  if (error) throw error
-  return { sales: data as Sale[], count: count || 0 }
-}
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { sales: data as Sale[], count: count || 0 };
+};
 
 export default function SalesPage() {
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<SaleStatus | 'all'>('all')
-  const [channelFilter, setChannelFilter] = useState<Channel | 'all'>('all')
-  const loadMoreSalesRef = useRef<HTMLDivElement | null>(null)
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<SaleStatus | "all">("all");
+  const [channelFilter, setChannelFilter] = useState<Channel | "all">("all");
+  const loadMoreSalesRef = useRef<HTMLDivElement | null>(null);
+  const importFileInput = useRef<HTMLInputElement | null>(null);
   const {
     data: salesPages,
     isLoading,
     isValidating,
     size: salesPageSize,
     setSize: setSalesPageSize,
-  } = useSWRInfinite<SalesPageResponse>(
-    (pageIndex, previousPageData) => {
-      if (previousPageData && previousPageData.sales.length === 0) return null
-      return ['sales-page', pageIndex, search, statusFilter, channelFilter] as SalesPageKey
-    },
-    fetchSalesPage
-  )
+  } = useSWRInfinite<SalesPageResponse>((pageIndex, previousPageData) => {
+    if (previousPageData && previousPageData.sales.length === 0) return null;
+    return [
+      "sales-page",
+      pageIndex,
+      search,
+      statusFilter,
+      channelFilter,
+    ] as SalesPageKey;
+  }, fetchSalesPage);
 
-  const filteredSales = useMemo(() => salesPages?.flatMap((page) => page.sales) || [], [salesPages])
-  const totalSales = salesPages?.[0]?.count || 0
-  const hasMoreSales = filteredSales.length < totalSales
-  const isLoadingMoreSales = isValidating && salesPageSize > 0
+  const filteredSales = useMemo(
+    () => salesPages?.flatMap((page) => page.sales) || [],
+    [salesPages],
+  );
+  const totalSales = salesPages?.[0]?.count || 0;
+  const hasMoreSales = filteredSales.length < totalSales;
+  const isLoadingMoreSales = isValidating && salesPageSize > 0;
 
   useEffect(() => {
-    const loadMoreElement = loadMoreSalesRef.current
-    if (!loadMoreElement || !hasMoreSales || isLoading || isLoadingMoreSales) return
+    const loadMoreElement = loadMoreSalesRef.current;
+    if (!loadMoreElement || !hasMoreSales || isLoading || isLoadingMoreSales)
+      return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setSalesPageSize((currentSize) => currentSize + 1)
+          setSalesPageSize((currentSize) => currentSize + 1);
         }
       },
-      { rootMargin: '300px' }
-    )
-    observer.observe(loadMoreElement)
-    return () => observer.disconnect()
-  }, [hasMoreSales, isLoading, isLoadingMoreSales, setSalesPageSize])
+      { rootMargin: "300px" },
+    );
+    observer.observe(loadMoreElement);
+    return () => observer.disconnect();
+  }, [hasMoreSales, isLoading, isLoadingMoreSales, setSalesPageSize]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Ventas</h1>
-        <Link href="/">
-          <Button>
-            <PlusCircle />
-            Nueva Venta
+        <div className="flex items-center gap-2">
+          <input
+            ref={importFileInput}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            onClick={() => importFileInput.current?.click()}
+          >
+            <Download />
+            Importar
+          </Button>
+          <Link href="/">
+            <Button>
+              <PlusCircle />
+              Nueva Venta
             </Button>
-        </Link>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -108,7 +155,10 @@ export default function SalesPage() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as SaleStatus | 'all')}>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as SaleStatus | "all")}
+        >
           <SelectTrigger className="w-48">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Estado" />
@@ -122,7 +172,10 @@ export default function SalesPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={channelFilter} onValueChange={(v) => setChannelFilter(v as Channel | 'all')}>
+        <Select
+          value={channelFilter}
+          onValueChange={(v) => setChannelFilter(v as Channel | "all")}
+        >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Canal" />
           </SelectTrigger>
@@ -143,9 +196,14 @@ export default function SalesPage() {
       {/* Stats */}
       {!isLoading && filteredSales.length > 0 && (
         <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>Mostrando {filteredSales.length} de {totalSales} ventas encontradas</span>
           <span>
-            Total: {formatPrice(filteredSales.reduce((sum, sale) => sum + sale.total, 0))}
+            Mostrando {filteredSales.length} de {totalSales} ventas encontradas
+          </span>
+          <span>
+            Total:{" "}
+            {formatPrice(
+              filteredSales.reduce((sum, sale) => sum + sale.total, 0),
+            )}
           </span>
         </div>
       )}
@@ -157,11 +215,11 @@ export default function SalesPage() {
             onClick={() => setSalesPageSize((currentSize) => currentSize + 1)}
             disabled={isLoadingMoreSales}
           >
-            {isLoadingMoreSales ? 'Cargando...' : 'Cargar más ventas'}
+            {isLoadingMoreSales ? "Cargando..." : "Cargar más ventas"}
           </Button>
           <div ref={loadMoreSalesRef} className="h-1" aria-hidden="true" />
         </div>
       )}
     </div>
-  )
+  );
 }
