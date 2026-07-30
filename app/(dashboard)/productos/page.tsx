@@ -723,7 +723,7 @@ export default function ProductsPage() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-fit">Imagen</TableHead>
-              <TableHead className="w-[150px]">Producto</TableHead>
+              <TableHead className="w-37.5">Producto</TableHead>
               <TableHead>Variante</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-right">Precio</TableHead>
