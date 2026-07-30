@@ -66,16 +66,64 @@ const getImportValue = (row: ImportRow, columnName: string) => {
   return value === null || value === undefined ? "" : String(value).trim();
 };
 
-const parseImportNumber = (value: string, fallback = 0) => {
-  const normalizedValue = value.replace(/[$\s]/g, "").replace(/\./g, "").replace(",", ".");
-  const parsedValue = Number(normalizedValue);
-  return Number.isFinite(parsedValue) ? parsedValue : fallback;
+const parseImportNumber = (value: any, fallback = 0) => {
+  if (value === null || value === undefined || value === "") return fallback;
+  
+  // Si Excel ya devolvió un número nativo
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.round(value * 100) / 100 : fallback;
+  }
+
+  const strValue = String(value).replace(/[$\s]/g, "").trim();
+  if (!strValue) return fallback;
+
+  // Si tiene puntos y comas (ej: "1.234,56" o "1,234.56")
+  let normalized = strValue;
+  if (strValue.includes(".") && strValue.includes(",")) {
+    if (strValue.lastIndexOf(".") < strValue.lastIndexOf(",")) {
+      // Formato latino: 1.234,56 -> 1234.56
+      normalized = strValue.replace(/\./g, "").replace(",", ".");
+    } else {
+      // Formato anglo: 1,234.56 -> 1234.56
+      normalized = strValue.replace(/,/g, "");
+    }
+  } else if (strValue.includes(",")) {
+    // Formato latino con decimales: 31762,5 -> 31762.5
+    normalized = strValue.replace(",", ".");
+  }
+
+  const parsedValue = Number(normalized);
+  return Number.isFinite(parsedValue) ? Math.round(parsedValue * 100) / 100 : fallback;
 };
 
-const parseImportDate = (value: string) => {
-  const [day, month, year] = value.split(/[/-]/).map(Number);
-  if (!day || !month || !year) return null;
-  return new Date(Date.UTC(year, month - 1, day, 12)).toISOString();
+const parseImportDate = (value: any) => {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? null : value.toISOString();
+  }
+
+  const strValue = String(value).trim();
+  if (!strValue) return null;
+
+  // Formato YYYY-MM-DD o ISO string
+  if (strValue.includes("-") && strValue.length >= 10 && strValue.indexOf("-") === 4) {
+    const parsed = new Date(strValue);
+    return isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  // Formato DD/MM/YYYY o DD-MM-YYYY
+  const parts = strValue.split(/[/-]/).map(Number);
+  if (parts.length === 3) {
+    const [day, month, year] = parts;
+    if (day && month && year) {
+      const fullYear = year < 100 ? 2000 + year : year;
+      return new Date(Date.UTC(fullYear, month - 1, day, 12)).toISOString();
+    }
+  }
+
+  const parsedFallback = new Date(strValue);
+  return isNaN(parsedFallback.getTime()) ? null : parsedFallback.toISOString();
 };
 
 const mapImportChannel = (value: string): Channel => {
@@ -94,8 +142,12 @@ const mapImportStatus = (value: string): SaleStatus => {
   return "PREPARING";
 };
 
-const buildProductKey = (product: Pick<Product, "name" | "variant">) =>
-  normalizeText([product.name, product.variant].filter(Boolean).join(" "));
+const buildProductKey = (product: Pick<Product, "name" | "variant"> | string) => {
+  if (typeof product === "string") {
+    return normalizeText(product);
+  }
+  return normalizeText([product.name, product.variant].filter(Boolean).join(" "));
+};
 
 const splitImportedProducts = (value: string) =>
   value
@@ -133,7 +185,6 @@ const buildSaleFingerprint = (sale: {
     items,
   ].join("::");
 };
-
 
 const fetchSalesPage = async ([
   ,
@@ -181,6 +232,7 @@ export default function SalesPage() {
   const [isImporting, setIsImporting] = useState(false);
   const loadMoreSalesRef = useRef<HTMLDivElement | null>(null);
   const importFileInput = useRef<HTMLInputElement | null>(null);
+
   const {
     data: salesPages,
     isLoading,
@@ -213,7 +265,10 @@ export default function SalesPage() {
 
     setIsImporting(true);
     try {
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+      const workbook = XLSX.read(await file.arrayBuffer(), {
+        type: "array",
+        cellDates: true,
+      });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<ImportRow>(worksheet, { defval: "" });
 
@@ -222,7 +277,11 @@ export default function SalesPage() {
         return;
       }
 
-      const [{ data: products, error: productsError }, { data: paymentMethods, error: paymentMethodsError }, { data: existingSales, error: existingSalesError }] = await Promise.all([
+      const [
+        { data: products, error: productsError },
+        { data: paymentMethods, error: paymentMethodsError },
+        { data: existingSales, error: existingSalesError },
+      ] = await Promise.all([
         supabase.from("products").select("id, name, variant, price, stock, is_active"),
         supabase.from("payment_methods").select("*"),
         supabase.from("sales").select("*, items:sale_items(product_id, quantity, unit_price, total)"),
@@ -242,7 +301,8 @@ export default function SalesPage() {
       let skippedInvalid = 0;
 
       for (const row of rows) {
-        const createdAt = parseImportDate(getImportValue(row, SALE_IMPORT_COLUMNS.date));
+        const rawDate = row[SALE_IMPORT_COLUMNS.date] || getImportValue(row, SALE_IMPORT_COLUMNS.date);
+        const createdAt = parseImportDate(rawDate);
         const productNames = splitImportedProducts(getImportValue(row, SALE_IMPORT_COLUMNS.products));
         const paymentMethod = paymentMethodsByName.get(normalizeText(getImportValue(row, SALE_IMPORT_COLUMNS.paymentMethod)));
 
@@ -255,8 +315,9 @@ export default function SalesPage() {
         const subtotal = parseImportNumber(getImportValue(row, SALE_IMPORT_COLUMNS.subtotal));
         const total = parseImportNumber(getImportValue(row, SALE_IMPORT_COLUMNS.total));
         const orderNumber = parseImportNumber(getImportValue(row, SALE_IMPORT_COLUMNS.orderNumber), NaN);
+
         const items = productNames.map((productName) => {
-          const product = productsByKey.get(normalizeText(productName));
+          const product = productsByKey.get(buildProductKey(productName));
           if (!product) unmatchedProducts.add(productName);
           const itemQuantity = productNames.length === 1 ? quantity : 1;
           const unitPrice = subtotal && quantity ? Math.round(subtotal / quantity) : Number(product?.price ?? 0);
@@ -277,11 +338,12 @@ export default function SalesPage() {
           discount: Math.max(subtotal - total, 0),
           total,
           status: mapImportStatus(getImportValue(row, SALE_IMPORT_COLUMNS.status)),
-          tracking_sent: normalizeText(getImportValue(row, SALE_IMPORT_COLUMNS.trackingSent)) === "true",
+          tracking_sent: normalizeText(getImportValue(row, SALE_IMPORT_COLUMNS.trackingSent)) === "true" || getImportValue(row, SALE_IMPORT_COLUMNS.trackingSent) === "1",
           notes: getImportValue(row, SALE_IMPORT_COLUMNS.detail) || null,
           is_paid: total > 0 && normalizeText(paymentMethod.name) !== "en espera",
           items: items as { product_id: string; quantity: number; unit_price: number; total: number }[],
         };
+
         const fingerprint = buildSaleFingerprint(saleToInsert);
         if (fingerprints.has(fingerprint) || importedFingerprints.has(fingerprint)) {
           skippedDuplicates += 1;
@@ -309,8 +371,10 @@ export default function SalesPage() {
       const { error: itemsError } = await supabase.from("sale_items").insert(saleItems);
       if (itemsError) throw itemsError;
 
+      
       await mutate((key) => Array.isArray(key) && key[0] === "sales-page");
       toast.success(`Se importaron ${insertedSales.length} ventas nuevas. Duplicadas: ${skippedDuplicates}. Inválidas: ${skippedInvalid}.`);
+      console.log("Productos no encontrados:", unmatchedProducts);
       if (unmatchedProducts.size) toast.warning(`${unmatchedProducts.size} productos no se pudieron ligar. Revisá la consola.`);
     } catch (error) {
       console.error("Error importing sales:", error);

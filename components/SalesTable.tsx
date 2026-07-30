@@ -45,8 +45,6 @@ export function SalesTable({ isLoading, sales }: SalesTableProps) {
     });
   };
 
-    console.log(sales[0])
-
   return (
     <div className="rounded-lg border border-border bg-card">
       <Table className="table-fixed">

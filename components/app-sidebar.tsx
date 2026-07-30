@@ -27,7 +27,7 @@ const navigation = [
     icon: Package,
     totalAccess: true
   },
-  { name: 'Analítica',
+  { name: 'Estadísticas',
     href: '/stats',
     icon: BarChart3,
     totalAccess: true
