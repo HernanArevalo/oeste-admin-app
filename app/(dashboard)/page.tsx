@@ -286,6 +286,29 @@ export default function NewSalePage() {
         }
       }
 
+      try {
+        const saleData = {
+          sale,
+          sale_items: saleItems,
+        };
+
+        const url = process.env.NEXT_PUBLIC_N8N_SEND_SALE_BY_WPP_URL;
+
+        if (!url) {
+          throw new Error("NEXT_PUBLIC_N8N_SEND_SALE_BY_WPP_URL no está configurada");
+        }
+
+        await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(saleData),
+        });
+      } catch (error) {
+        console.error("Error enviando venta a n8n:", error);
+      }
+
       toast.success("Venta registrada correctamente", {
         duration: 4000,
         position: "top-center",
