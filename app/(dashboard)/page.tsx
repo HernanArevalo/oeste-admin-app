@@ -287,15 +287,31 @@ export default function NewSalePage() {
       }
 
       try {
+        const n8nSaleItems = cart.map((item) => ({
+          sale_id: sale.id,
+          name: item.product.name,
+          variant: item.product.variant || null,
+          product_id: item.product.id,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          total: item.product.price * item.quantity,
+        }));
+
         const saleData = {
-          sale,
-          sale_items: saleItems,
+          sale: {
+            ...sale,
+            payment_method: selectedPaymentMethod?.name || null,
+            notes: notes || null,
+          },
+          sale_items: n8nSaleItems,
         };
 
         const url = process.env.NEXT_PUBLIC_N8N_SEND_SALE_BY_WPP_URL;
 
         if (!url) {
-          throw new Error("NEXT_PUBLIC_N8N_SEND_SALE_BY_WPP_URL no está configurada");
+          throw new Error(
+            "NEXT_PUBLIC_N8N_SEND_SALE_BY_WPP_URL no está configurada",
+          );
         }
 
         await fetch(url, {
@@ -542,14 +558,14 @@ export default function NewSalePage() {
         <div className="flex gap-2 mt-2 flex-wrap">
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 cursor-pointer"
             onClick={clearCart}
             disabled={cart.length === 0 || isSubmitting}
           >
             Limpiar
           </Button>
           <Button
-            className="flex-2"
+            className="flex-2 cursor-pointer"
             onClick={handleSubmit}
             disabled={cart.length === 0 || isSubmitting}
           >
