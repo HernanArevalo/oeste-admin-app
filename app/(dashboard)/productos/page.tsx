@@ -104,6 +104,7 @@ const fetchProductsPage = async ([, pageIndex, search, categoryFilter, showInact
   let query = supabase
     .from('products')
     .select('*, category:categories(*)', { count: 'exact' })
+    .order("created_at", { ascending: false })
     .order('name', { ascending: true })
     .order('variant', { ascending: true })
     .range(from, to)

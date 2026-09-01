@@ -57,6 +57,7 @@ const fetchProductsPage = async ([
     .from("products")
     .select("*, category:categories(*)", { count: "exact" })
     .eq("is_active", true)
+    .order("created_at", { ascending: false })
     .order("name", { ascending: true })
     .order("variant", { ascending: true })
     .range(from, to);
