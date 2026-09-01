@@ -39,7 +39,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Field, FieldLabel, FieldGroup } from '@/components/ui/field'
-import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2, Trash2 } from 'lucide-react'
+import { Search, Plus, Save, X, Download, Upload, AlertCircle, ImageIcon, Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { capitalize, exportToExcel, getOptimizedCloudinaryImage } from '@/utils'
@@ -63,6 +63,31 @@ const parseImportNumber = (value: string, fallback = 0) => {
   const parsedValue = Number(normalizedValue)
   return Number.isFinite(parsedValue) ? parsedValue : fallback
 }
+
+const parseOptionalImportNumber = (value: string) => {
+  const normalizedValue = value.replace(/\./g, '').replace(',', '.').trim()
+  if (!normalizedValue) return null
+
+  const parsedValue = Number(normalizedValue)
+  return Number.isFinite(parsedValue) ? parsedValue : null
+}
+
+const getImportValueFromColumns = (row: ImportRow, columnNames: string[]) => {
+  for (const columnName of columnNames) {
+    const value = getImportValue(row, columnName)
+    if (value) return value
+  }
+
+  return ''
+}
+
+const getProductKey = (name: string, variant: string | null) =>
+  `${name.trim().toLowerCase()}::${variant?.trim().toLowerCase() || ''}`
+
+type ProductUpdateLookup = Pick<
+  Product,
+  'id' | 'name' | 'variant' | 'empretienda_product_id' | 'empretienda_stock_id'
+>
 
 const getImportedProductNameParts = (rawName: string) => rawName.split(/\s+/).filter(Boolean)
 
@@ -180,11 +205,13 @@ export default function ProductsPage() {
   const [isNewProductOpen, setIsNewProductOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [isUpdatingFromFile, setIsUpdatingFromFile] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const rowFileInputs = useRef<Record<string, HTMLInputElement | null>>({})
   const newProductFileInput = useRef<HTMLInputElement | null>(null)
   const importFileInput = useRef<HTMLInputElement | null>(null)
+  const updateFileInput = useRef<HTMLInputElement | null>(null)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
 
   // New product form state
@@ -449,6 +476,110 @@ export default function ProductsPage() {
     }
   }
 
+  const handleUpdateProductsFromFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) return
+
+    setIsUpdatingFromFile(true)
+
+    try {
+      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' })
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json<ImportRow>(worksheet, { defval: '' })
+
+      if (!rows.length) {
+        toast.error('El archivo no tiene productos para actualizar')
+        return
+      }
+
+      const { data: existingProducts, error: existingProductsError } = await supabase
+        .from('products')
+        .select('id, name, variant, empretienda_product_id, empretienda_stock_id')
+
+      if (existingProductsError) throw existingProductsError
+
+      const productLookup = (existingProducts || []) as ProductUpdateLookup[]
+      const productsById = new Map(productLookup.map((product) => [product.id, product]))
+      const productsByExternalId = new Map<string, ProductUpdateLookup>()
+      const productsByKey = new Map<string, ProductUpdateLookup>()
+
+      productLookup.forEach((product) => {
+        productsByKey.set(getProductKey(product.name, product.variant), product)
+        if (product.empretienda_product_id !== null) {
+          productsByExternalId.set(String(product.empretienda_product_id), product)
+        }
+        if (product.empretienda_stock_id !== null) {
+          productsByExternalId.set(String(product.empretienda_stock_id), product)
+        }
+      })
+
+      const updates = new Map<string, { id: string; price: number; stock: number }>()
+      let unmatchedProducts = 0
+      let invalidRows = 0
+
+      rows.forEach((row) => {
+        const price = parseOptionalImportNumber(getImportValueFromColumns(row, ['Precio', 'price']))
+        const stock = parseOptionalImportNumber(getImportValueFromColumns(row, ['Stock', 'stock']))
+
+        if (price === null || stock === null) {
+          invalidRows += 1
+          return
+        }
+
+        const productId = getImportValueFromColumns(row, ['id'])
+        const externalId = getImportValueFromColumns(row, ['IDProduct', 'IDStock', 'empretienda_product_id', 'empretienda_stock_id'])
+        const rawName = getImportValueFromColumns(row, ['Nombre', 'name'])
+        const variant = getImportValueFromColumns(row, ['Valor atributo 1', 'variant'])
+        const product =
+          (productId ? productsById.get(productId) : undefined) ||
+          (externalId ? productsByExternalId.get(externalId) : undefined) ||
+          (rawName
+            ? productsByKey.get(
+                getProductKey(
+                  buildImportedProductName(rawName),
+                  buildImportedProductVariant(rawName, variant)
+                )
+              )
+            : undefined)
+
+        if (!product) {
+          unmatchedProducts += 1
+          return
+        }
+
+        updates.set(product.id, { id: product.id, price, stock: Math.trunc(stock) })
+      })
+
+      if (!updates.size) {
+        toast.error('No se encontraron productos válidos para actualizar')
+        return
+      }
+
+      const results = await Promise.all(
+        Array.from(updates.values()).map(({ id, price, stock }) =>
+          supabase.from('products').update({ price, stock }).eq('id', id)
+        )
+      )
+      const updateError = results.find(({ error }) => error)?.error
+      if (updateError) throw updateError
+
+      toast.success(`${updates.size} producto${updates.size !== 1 ? 's' : ''} actualizado${updates.size !== 1 ? 's' : ''}`)
+      if (unmatchedProducts || invalidRows) {
+        toast.warning(
+          `${unmatchedProducts ? `${unmatchedProducts} sin coincidencia` : ''}${unmatchedProducts && invalidRows ? '. ' : ''}${invalidRows ? `${invalidRows} con precio o stock inválido` : ''}`
+        )
+      }
+      refreshProducts()
+    } catch (error) {
+      console.error('Error updating products from file:', error)
+      toast.error('Error al actualizar productos desde el archivo')
+    } finally {
+      setIsUpdatingFromFile(false)
+    }
+  }
+
   const handleCreateProduct = async () => {
     if (!newProduct.name || !newProduct.price || !newProduct.stock) {
       toast.error('Completa los campos requeridos')
@@ -536,6 +667,21 @@ export default function ProductsPage() {
                 <Download className="h-4 w-4 mr-2" />
               )}
               {isImporting ? 'Importando...' : 'Importar'}
+            </Button>
+            <input
+              ref={updateFileInput}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleUpdateProductsFromFile}
+            />
+            <Button variant="outline" onClick={() => updateFileInput.current?.click()} disabled={isUpdatingFromFile}>
+              {isUpdatingFromFile ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {isUpdatingFromFile ? 'Actualizando...' : 'Actualizar stock y precio'}
             </Button>
             <Button variant="outline" onClick={exportToExcel} disabled={!products?.length}>
               <Upload className="h-4 w-4 mr-2" />
